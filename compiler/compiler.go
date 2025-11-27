@@ -43,7 +43,7 @@ type compiler struct {
 
 type variable struct {
 	scope    int
-	dataType string
+	dataType shared.DataType
 }
 
 func (c *compiler) compileStmt(stmt parser.Stmt) (err error) {
@@ -163,10 +163,11 @@ func (c *compiler) compileStmtVarDeclare(stmt parser.StmtVarDeclare) (err error)
 		return
 	}
 
-	c.variables[stmt.VariableName] = variable{
+	variable := variable{
 		scope:    c.scope,
 		dataType: stmt.DataType,
 	}
+	c.variables[stmt.VariableName] = variable
 
 	if c.scope != globalScope {
 		c.sb.WriteString(shared.Keyword_Local)
@@ -177,12 +178,7 @@ func (c *compiler) compileStmtVarDeclare(stmt parser.StmtVarDeclare) (err error)
 	c.sb.WriteString(" = ")
 
 	if stmt.Expr == nil {
-		zeroValue, ok := shared.DataTypesZeroValues[stmt.DataType]
-		if !ok {
-			err = fmt.Errorf("data type %q not found", stmt.DataType)
-			return
-		}
-		c.sb.WriteString(zeroValue)
+		c.sb.WriteString(variable.dataType.ZeroValue())
 	} else {
 		if err = c.compileExpr(stmt.Expr); err != nil {
 			err = fmt.Errorf("failed to parse expression: %w", err)

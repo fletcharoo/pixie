@@ -24,14 +24,4 @@ var (
 		Keyword_True:     {},
 		Keyword_False:    {},
 	}
-	BuiltInDataTypes = map[string]struct{}{
-		Keyword_Number:  {},
-		Keyword_String:  {},
-		Keyword_Boolean: {},
-	}
-	DataTypesZeroValues = map[string]string{
-		Keyword_Number:  "0",
-		Keyword_String:  `""`,
-		Keyword_Boolean: "false",
-	}
 )

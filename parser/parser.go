@@ -179,19 +179,10 @@ func (p *Parser) parseStmtVarDeclare(tokLabel lexer.Token) (stmt StmtVarDeclare,
 		return
 	}
 
-	tokType, err := p.lexer.GetToken()
+	// Parse the data type
+	dataType, err := p.parseDataType()
 	if err != nil {
-		err = fmt.Errorf("failed to get type token: %w", err)
-		return
-	}
-
-	if tokType.Type != lexer.TokenType_Label {
-		err = fmt.Errorf("expected label got: %v", tokType)
-		return
-	}
-
-	if len(tokType.Value) == 0 {
-		err = fmt.Errorf("type is empty")
+		err = fmt.Errorf("failed to parse data type: %w", err)
 		return
 	}
 
@@ -219,9 +210,38 @@ func (p *Parser) parseStmtVarDeclare(tokLabel lexer.Token) (stmt StmtVarDeclare,
 
 	return StmtVarDeclare{
 		VariableName: tokLabel.Value,
-		DataType:     tokType.Value,
+		DataType:     dataType,
 		Expr:         expr,
 	}, nil
+}
+
+func (p *Parser) parseDataType() (dataType shared.DataType, err error) {
+	tokLabel, err := p.lexer.GetToken()
+	if err != nil {
+		err = fmt.Errorf("failed to get label token: %w", err)
+		return
+	}
+
+	if tokLabel.Type != lexer.TokenType_Label {
+		err = fmt.Errorf("expected label, got %q", lexer.TokenTypeString[tokLabel.Type])
+	}
+
+	if len(tokLabel.Value) == 0 {
+		err = fmt.Errorf("data type is empty")
+		return
+	}
+
+	switch tokLabel.Value {
+	case shared.Keyword_Number:
+		return shared.Number{}, nil
+	case shared.Keyword_String:
+		return shared.String{}, nil
+	case shared.Keyword_Boolean:
+		return shared.Boolean{}, nil
+	}
+
+	err = fmt.Errorf("Unknown type %q", tokLabel.Value)
+	return
 }
 
 func (p *Parser) parseStmtVarAssign(tokLabel lexer.Token) (stmt StmtVarAssign, err error) {
