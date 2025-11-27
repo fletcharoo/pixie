@@ -7,6 +7,7 @@ const (
 	Keyword_Boolean  = "bool"
 	Keyword_List     = "list"
 	Keyword_Map      = "map"
+	Keyword_Object   = "obj"
 	Keyword_True     = "true"
 	Keyword_False    = "false"
 	Keyword_Local    = "local"

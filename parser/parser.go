@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"pixie/lexer"
+	"pixie/shared"
 )
 
 func New(lexer *lexer.Lexer) *Parser {
@@ -170,6 +171,11 @@ parseStmtCallFunctionLoop:
 func (p *Parser) parseStmtVarDeclare(tokLabel lexer.Token) (stmt StmtVarDeclare, err error) {
 	if len(tokLabel.Value) == 0 {
 		err = fmt.Errorf("variable name is empty")
+		return
+	}
+
+	if _, ok := shared.IllegalKeywords[tokLabel.Value]; ok {
+		err = fmt.Errorf("variable name %q is illegal", tokLabel.Value)
 		return
 	}
 
