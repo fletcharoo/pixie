@@ -41,8 +41,8 @@ func Test_CompileExamples(t *testing.T) {
 
 func Test_VariableInvalidTypeAssign(t *testing.T) {
 	pixie := `
-	str = "hello world"
-	str = 123
+	s : str = "hello world"
+	s = 123
 	`
 
 	l := lexer.New(pixie)

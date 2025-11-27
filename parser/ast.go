@@ -1,26 +1,17 @@
 package parser
 
+import "pixie/shared"
+
 const (
 	NodeType_Undefined = iota
 	NodeType_StmtBlock
 	NodeType_StmtCallFunction
-	NodeType_StmtAssign
+	NodeType_StmtVarDeclare
+	NodeType_StmtVarAssign
 	NodeType_ExprBlock
 	NodeType_ExprNumber
 	NodeType_ExprString
 	NodeType_ExprBoolean
-
-	DataType_Number  = "num"
-	DataType_String  = "str"
-	DataType_Boolean = "bool"
-)
-
-var (
-	BuiltInDataTypes = map[string]struct{}{
-		DataType_Number:  {},
-		DataType_String:  {},
-		DataType_Boolean: {},
-	}
 )
 
 type Node interface {
@@ -41,7 +32,8 @@ type Expr interface {
 // Ensures all statements and expressions implement the Node interfaces
 func (StmtBlock) Type() int        { return NodeType_StmtBlock }
 func (StmtCallFunction) Type() int { return NodeType_StmtCallFunction }
-func (StmtAssign) Type() int       { return NodeType_StmtAssign }
+func (StmtVarDeclare) Type() int   { return NodeType_StmtVarDeclare }
+func (StmtVarAssign) Type() int    { return NodeType_StmtVarAssign }
 func (ExprBlock) Type() int        { return NodeType_ExprBlock }
 func (ExprNumber) Type() int       { return NodeType_ExprNumber }
 func (ExprString) Type() int       { return NodeType_ExprString }
@@ -50,7 +42,8 @@ func (ExprBoolean) Type() int      { return NodeType_ExprBoolean }
 // Ensures all statements implement the Stmt interface
 func (StmtBlock) Stmt()        {}
 func (StmtCallFunction) Stmt() {}
-func (StmtAssign) Stmt()       {}
+func (StmtVarDeclare) Stmt()   {}
+func (StmtVarAssign) Stmt()    {}
 
 // Ensures all expressions implement the Expr interface
 func (ExprBlock) Expr()   {}
@@ -67,7 +60,13 @@ type StmtCallFunction struct {
 	Args         []Expr
 }
 
-type StmtAssign struct {
+type StmtVarDeclare struct {
+	VariableName string
+	DataType     string
+	Expr         Expr
+}
+
+type StmtVarAssign struct {
 	VariableName string
 	Expr         Expr
 }
@@ -85,7 +84,7 @@ type ExprNumber struct {
 }
 
 func (e ExprNumber) DataType() string {
-	return DataType_Number
+	return shared.Keyword_Number
 }
 
 type ExprString struct {
@@ -93,7 +92,7 @@ type ExprString struct {
 }
 
 func (e ExprString) DataType() string {
-	return DataType_String
+	return shared.Keyword_String
 }
 
 type ExprBoolean struct {
@@ -101,5 +100,5 @@ type ExprBoolean struct {
 }
 
 func (e ExprBoolean) DataType() string {
-	return DataType_Boolean
+	return shared.Keyword_Boolean
 }

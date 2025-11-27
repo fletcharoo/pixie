@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"pixie/parser"
+	"pixie/shared"
 	"strings"
 )
 
@@ -48,20 +49,22 @@ type variable struct {
 func (c *compiler) compileStmt(stmt parser.Stmt) (err error) {
 	switch n := stmt.(type) {
 	case parser.StmtBlock:
-		err = c.compileStmtBlock(n)
-		if err != nil {
+		if err = c.compileStmtBlock(n); err != nil {
 			err = fmt.Errorf("failed to compile statement block: %w", err)
 			return
 		}
 	case parser.StmtCallFunction:
-		err = c.compileStmtCallFunction(n)
-		if err != nil {
+		if err = c.compileStmtCallFunction(n); err != nil {
 			err = fmt.Errorf("failed to compile statement call function: %w", err)
 			return
 		}
-	case parser.StmtAssign:
-		err = c.compileStmtAssign(n)
-		if err != nil {
+	case parser.StmtVarDeclare:
+		if err = c.compileStmtVarDeclare(n); err != nil {
+			err = fmt.Errorf("failed to compile statement variable declare: %w", err)
+			return
+		}
+	case parser.StmtVarAssign:
+		if err = c.compileStmtVarAssign(n); err != nil {
 			err = fmt.Errorf("failed to compile statement assign: %w", err)
 			return
 		}
@@ -153,23 +156,51 @@ func (c *compiler) compileStmtCallFunction(stmt parser.StmtCallFunction) (err er
 	return nil
 }
 
-func (c *compiler) compileStmtAssign(stmt parser.StmtAssign) (err error) {
-	if len(stmt.VariableName) == 0 {
-		err = fmt.Errorf("variable name is empty")
+func (c *compiler) compileStmtVarDeclare(stmt parser.StmtVarDeclare) (err error) {
+	_, ok := c.variables[stmt.VariableName]
+	if ok {
+		err = fmt.Errorf("variable %q already exists", stmt.VariableName)
+		return
+	}
+
+	c.variables[stmt.VariableName] = variable{
+		scope:    c.scope,
+		dataType: stmt.DataType,
+	}
+
+	if c.scope != globalScope {
+		c.sb.WriteString(shared.Keyword_Local)
+		c.sb.WriteRune(' ')
+	}
+
+	c.sb.WriteString(stmt.VariableName)
+	c.sb.WriteString(" = ")
+
+	if stmt.Expr == nil {
+		zeroValue, ok := shared.DataTypesZeroValues[stmt.DataType]
+		if !ok {
+			err = fmt.Errorf("data type %q not found", stmt.DataType)
+			return
+		}
+		c.sb.WriteString(zeroValue)
+	} else {
+		if err = c.compileExpr(stmt.Expr); err != nil {
+			err = fmt.Errorf("failed to parse expression: %w", err)
+			return
+		}
+	}
+
+	return nil
+}
+
+func (c *compiler) compileStmtVarAssign(stmt parser.StmtVarAssign) (err error) {
+	v, ok := c.variables[stmt.VariableName]
+	if !ok {
+		err = fmt.Errorf("variable %q does not exist", stmt.VariableName)
 		return
 	}
 
 	dataType := stmt.Expr.DataType()
-	v, ok := c.variables[stmt.VariableName]
-
-	if ok {
-		return c.compileStmtAssignExists(stmt, dataType, v)
-	}
-
-	return c.compileStmtAssignNotExists(stmt, dataType)
-}
-
-func (c *compiler) compileStmtAssignExists(stmt parser.StmtAssign, dataType string, v variable) (err error) {
 	if dataType != v.dataType {
 		err = errors.Join(ErrInvalidTypeAssign, fmt.Errorf("variable %q wants %q got %q", stmt.VariableName, v.dataType, dataType))
 		return
@@ -178,29 +209,10 @@ func (c *compiler) compileStmtAssignExists(stmt parser.StmtAssign, dataType stri
 	c.sb.WriteString(stmt.VariableName)
 	c.sb.WriteString(" = ")
 	if err = c.compileExpr(stmt.Expr); err != nil {
-		err = fmt.Errorf("failed to compile expression: %w", err)
+		err = fmt.Errorf("failed to parse expression: %w", err)
 		return
 	}
 
-	return nil
-}
-
-func (c *compiler) compileStmtAssignNotExists(stmt parser.StmtAssign, dataType string) (err error) {
-	c.variables[stmt.VariableName] = variable{
-		scope:    c.scope,
-		dataType: dataType,
-	}
-
-	if c.scope != globalScope {
-		c.sb.WriteString("local ")
-	}
-
-	c.sb.WriteString(stmt.VariableName)
-	c.sb.WriteString(" = ")
-	if err = c.compileExpr(stmt.Expr); err != nil {
-		err = fmt.Errorf("failed to compile expression: %w", err)
-		return
-	}
 	return nil
 }
 

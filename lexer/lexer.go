@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"pixie/shared"
 	"unicode"
 )
 
@@ -21,6 +22,7 @@ const (
 	TokenType_Comma                 // TokenType_Comma represents a , character
 	TokenType_ForwardSlash          // TokenType_ForwardSlash represents a / character
 	TokenType_Equal                 // TokenType_Equal represents a = character
+	TokenType_Colon                 // TokenType_Colon represents a : character
 )
 
 // TokenTypeString maps token type constants to their string representations for debugging and display purposes.
@@ -36,6 +38,7 @@ var (
 		TokenType_Comma:          "Comma",
 		TokenType_ForwardSlash:   "ForwardSlash",
 		TokenType_Equal:          "Equal",
+		TokenType_Colon:          "Colon",
 	}
 
 	TokenTypeCharactersMap map[rune]Token = map[rune]Token{
@@ -44,6 +47,7 @@ var (
 		',': {Type: TokenType_Comma},
 		'/': {Type: TokenType_ForwardSlash},
 		'=': {Type: TokenType_Equal},
+		':': {Type: TokenType_Colon},
 	}
 )
 
@@ -256,7 +260,7 @@ func (l *Lexer) getTokenLabel() (tok Token, err error) {
 	}
 
 	// Check if this is a boolean literal
-	if tok.Value == "true" || tok.Value == "false" {
+	if tok.Value == shared.Keyword_True || tok.Value == shared.Keyword_False {
 		tok.Type = TokenType_BooleanLiteral
 	}
 
@@ -292,41 +296,6 @@ func (l *Lexer) getTokenStringLiteral() (tok Token, err error) {
 		}
 
 		tok.Value += string(r)
-	}
-
-	return tok, nil
-}
-
-// getTokenBooleanLiteral scans and returns a boolean literal token from the current position.
-// It recognizes "true" and "false". Note: This function exists but is currently unused
-// as boolean literals are handled in getTokenLabel instead.
-func (l *Lexer) getTokenBooleanLiteral() (tok Token, err error) {
-	tok.Type = TokenType_BooleanLiteral
-	var r rune
-
-	// Peek ahead to see if this is "true" or "false"
-	startIndex := l.index
-	for {
-		r, err = l.peekRune()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return tok, err
-		}
-		if !isLabelRune(r) {
-			break
-		}
-		l.index++
-		tok.Value += string(r)
-	}
-
-	// Validate that it's either "true" or "false"
-	if tok.Value != "true" && tok.Value != "false" {
-		// Reset index and treat as invalid rune
-		l.index = startIndex
-		err = fmt.Errorf("%w: %s", errInvalidRune, tok.Value)
-		return
 	}
 
 	return tok, nil

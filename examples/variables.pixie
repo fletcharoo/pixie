@@ -1,10 +1,26 @@
-// assign a string variable
-str = "hello world"
+// declare string variable
+s1: str
 
-// assign a number variable
-int = 123
-float = 3.14
+// assign string variable
+s1 = "hello world"
 
-// assign a boolean variable
-bTrue = true
-bFalse = false
+// declare and assign string variable
+s2: str = "something"
+
+// declare number variable
+n1: num
+
+// assign number variable
+n1 = 123
+
+// declare and assign number variable
+n2: num = 3.14
+
+// declare boolean variable
+b1: bool
+
+// assign boolean variable
+b1 = true
+
+// declare and assign boolean value
+b2: bool = false

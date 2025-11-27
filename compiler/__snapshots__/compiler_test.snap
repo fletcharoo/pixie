@@ -10,10 +10,14 @@ print("hello","world")
 ---
 
 [Test_CompileExamples/variables.pixie - 1]
-str = "hello world"
-int = 123
-float = 3.14
-bTrue = true
-bFalse = false
+s1 = ""
+s1 = "hello world"
+s2 = "something"
+n1 = 0
+n1 = 123
+n2 = 3.14
+b1 = false
+b1 = true
+b2 = false
 
 ---
