@@ -9,3 +9,6 @@ help: ## Show this help.
 
 test: ## Run all tests.
 	go test -count 1 ./...
+
+test/update: ## Run all tests and update snapshots.
+	UPDATE_SNAPS=true go test -count 1 ./... 

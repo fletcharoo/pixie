@@ -1,0 +1,5 @@
+
+[Test_CompileExamples/function_call.pixie - 1]
+print("hello world")
+
+---
