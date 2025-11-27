@@ -16,6 +16,9 @@ const (
 	TokenType_NumberLiteral         // TokenType_NumberLiteral represents a numeric value token
 	TokenType_StringLiteral         // TokenType_StringLiteral represents a string value token
 	TokenType_BooleanLiteral        // TokenType_BooleanLiteral represents a boolean value token (true/false)
+	TokenType_OpenParan             // TokenType_OpenParan represents a ( character
+	TokenType_CloseParan            // TokenType_CloseParan represents a ) character
+	TokenType_Comma                 // TokenType_Comma represents a , character
 )
 
 // TokenTypeString maps token type constants to their string representations for debugging and display purposes.
@@ -26,12 +29,21 @@ var (
 		TokenType_NumberLiteral:  "NumberLiteral",
 		TokenType_StringLiteral:  "StringLiteral",
 		TokenType_BooleanLiteral: "BooleanLiteral",
+		TokenType_OpenParan:      "OpenParan",
+		TokenType_CloseParan:     "CloseParan",
+		TokenType_Comma:          "Comma",
+	}
+
+	TokenTypeCharactersMap map[rune]Token = map[rune]Token{
+		'(': {Type: TokenType_OpenParan},
+		')': {Type: TokenType_CloseParan},
+		',': {Type: TokenType_Comma},
 	}
 )
 
 var (
-	errUnexpectedEOF = errors.New("unexpected EOF")  // errUnexpectedEOF is returned when a string literal is not properly closed
-	errInvalidRune   = errors.New("invalid rune")    // errInvalidRune is returned when an invalid character is encountered
+	errUnexpectedEOF = errors.New("unexpected EOF") // errUnexpectedEOF is returned when a string literal is not properly closed
+	errInvalidRune   = errors.New("invalid rune")   // errInvalidRune is returned when an invalid character is encountered
 )
 
 // isLabelRune returns whether the provided rune is a valid label rune.
@@ -69,9 +81,9 @@ func New(input string) *Lexer {
 // It supports peeking at the next token without consuming it and handles various token types
 // including numbers, strings, labels, and boolean literals.
 type Lexer struct {
-	input []rune  // The input string converted to runes for proper Unicode handling
-	index int     // Current position in the input
-	buf   *Token  // Buffered token for peeking functionality
+	input []rune // The input string converted to runes for proper Unicode handling
+	index int    // Current position in the input
+	buf   *Token // Buffered token for peeking functionality
 }
 
 // getRune returns the rune at the current index of the input and increments the index.
@@ -111,6 +123,7 @@ func (l *Lexer) GetToken() (tok Token, err error) {
 	}
 
 	var r rune
+	var ok bool
 
 	for {
 		r, err = l.peekRune()
@@ -136,10 +149,17 @@ func (l *Lexer) GetToken() (tok Token, err error) {
 		case '"':
 			l.index++
 			return l.getTokenStringLiteral()
-		default:
-			err = fmt.Errorf("%w: %s", errInvalidRune, string(r))
-			return
 		}
+
+		tok, ok = TokenTypeCharactersMap[r]
+		if ok {
+			l.index++
+			return tok, nil
+		}
+
+		// If the rune is unknown.
+		err = fmt.Errorf("%w: %s", errInvalidRune, string(r))
+		return
 	}
 }
 

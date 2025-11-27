@@ -13,12 +13,12 @@ func TestNew(t *testing.T) {
 		input    string
 		expected []rune
 	}{
-		"empty_string":         {"", []rune{}},
-		"single_character":     {"a", []rune{'a'}},
-		"simple_string":        {"hello", []rune{'h', 'e', 'l', 'l', 'o'}},
-		"unicode_string":       {"héllo", []rune{'h', 'é', 'l', 'l', 'o'}},
-		"string_with_spaces":   {"hello world", []rune{'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'}},
-		"special_characters":   {"a!@#$%^&*()", []rune{'a', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')'}},
+		"empty_string":       {"", []rune{}},
+		"single_character":   {"a", []rune{'a'}},
+		"simple_string":      {"hello", []rune{'h', 'e', 'l', 'l', 'o'}},
+		"unicode_string":     {"héllo", []rune{'h', 'é', 'l', 'l', 'o'}},
+		"string_with_spaces": {"hello world", []rune{'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'}},
+		"special_characters": {"a!@#$%^&*()", []rune{'a', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')'}},
 	}
 
 	for name, tt := range tests {
@@ -36,12 +36,12 @@ func TestTokenString(t *testing.T) {
 		token    Token
 		expected string
 	}{
-		"undefined_token":      {Token{Type: TokenType_Undefined}, "Undefined"},
-		"label_token":          {Token{Type: TokenType_Label}, "Label"},
-		"number_literal_token": {Token{Type: TokenType_NumberLiteral}, "NumberLiteral"},
-		"string_literal_token": {Token{Type: TokenType_StringLiteral}, "StringLiteral"},
+		"undefined_token":       {Token{Type: TokenType_Undefined}, "Undefined"},
+		"label_token":           {Token{Type: TokenType_Label}, "Label"},
+		"number_literal_token":  {Token{Type: TokenType_NumberLiteral}, "NumberLiteral"},
+		"string_literal_token":  {Token{Type: TokenType_StringLiteral}, "StringLiteral"},
 		"boolean_literal_token": {Token{Type: TokenType_BooleanLiteral}, "BooleanLiteral"},
-		"invalid_token_type":   {Token{Type: 999}, "Undefined"}, // Should default to Undefined
+		"invalid_token_type":    {Token{Type: 999}, "Undefined"}, // Should default to Undefined
 	}
 
 	for name, tt := range tests {
@@ -72,48 +72,48 @@ func TestIsLabelRune(t *testing.T) {
 		"underscore": {'_', true},
 
 		// Test special characters that should return false
-		"space": {' ', false},
-		"hyphen": {'-', false},
-		"dot": {'.', false},
-		"comma": {',', false},
-		"exclamation": {'!', false},
-		"at_symbol": {'@', false},
-		"hash": {'#', false},
-		"dollar": {'$', false},
-		"percent": {'%', false},
-		"caret": {'^', false},
-		"ampersand": {'&', false},
-		"asterisk": {'*', false},
-		"plus": {'+', false},
-		"equals": {'=', false},
-		"parenthesis_open": {'(', false},
+		"space":             {' ', false},
+		"hyphen":            {'-', false},
+		"dot":               {'.', false},
+		"comma":             {',', false},
+		"exclamation":       {'!', false},
+		"at_symbol":         {'@', false},
+		"hash":              {'#', false},
+		"dollar":            {'$', false},
+		"percent":           {'%', false},
+		"caret":             {'^', false},
+		"ampersand":         {'&', false},
+		"asterisk":          {'*', false},
+		"plus":              {'+', false},
+		"equals":            {'=', false},
+		"parenthesis_open":  {'(', false},
 		"parenthesis_close": {')', false},
-		"bracket_open": {'[', false},
-		"bracket_close": {']', false},
-		"brace_open": {'{', false},
-		"brace_close": {'}', false},
-		"pipe": {'|', false},
-		"backslash": {'\\', false},
-		"semicolon": {';', false},
-		"colon": {':', false},
-		"apostrophe": {'\'', false},
-		"quote": {'"', false},
-		"less_than": {'<', false},
-		"greater_than": {'>', false},
-		"slash": {'/', false},
-		"question_mark": {'?', false},
-		"tilde": {'~', false},
-		"backtick": {'`', false},
+		"bracket_open":      {'[', false},
+		"bracket_close":     {']', false},
+		"brace_open":        {'{', false},
+		"brace_close":       {'}', false},
+		"pipe":              {'|', false},
+		"backslash":         {'\\', false},
+		"semicolon":         {';', false},
+		"colon":             {':', false},
+		"apostrophe":        {'\'', false},
+		"quote":             {'"', false},
+		"less_than":         {'<', false},
+		"greater_than":      {'>', false},
+		"slash":             {'/', false},
+		"question_mark":     {'?', false},
+		"tilde":             {'~', false},
+		"backtick":          {'`', false},
 
 		// Test Unicode letters (some examples)
-		"unicode_letter_a_with_grave": {'à', true},
-		"unicode_letter_n_with_tilde": {'ñ', true},
+		"unicode_letter_a_with_grave":  {'à', true},
+		"unicode_letter_n_with_tilde":  {'ñ', true},
 		"unicode_letter_o_with_umlaut": {'ö', true},
 
 		// Test Unicode numbers (some examples)
 		"unicode_number_arabic_indic_digit_zero": {'٠', true},
 		"unicode_number_arabic_indic_digit_five": {'٥', true},
-		"unicode_number_roman_numeral_one": {'Ⅰ', true},
+		"unicode_number_roman_numeral_one":       {'Ⅰ', true},
 	}
 
 	for name, tt := range tests {
@@ -131,35 +131,35 @@ func TestGetToken(t *testing.T) {
 		hasError bool
 	}{
 		// Test number literals
-		"single_integer": {"42", []Token{{Type: TokenType_NumberLiteral, Value: "42"}}, false},
-		"single_float":   {"3.14", []Token{{Type: TokenType_NumberLiteral, Value: "3.14"}}, false},
-		"integer_with_decimal": {"42.0", []Token{{Type: TokenType_NumberLiteral, Value: "42.0"}}, false},
-		"large_integer":  {"123456789", []Token{{Type: TokenType_NumberLiteral, Value: "123456789"}}, false},
-		"zero":           {"0", []Token{{Type: TokenType_NumberLiteral, Value: "0"}}, false},
-		"float_starting_with_zero": {"0.5", []Token{{Type: TokenType_NumberLiteral, Value: "0.5"}}, false},
-		"multiple_decimals": {"3.14.15", nil, true}, // Multiple decimals cause an error after parsing "3.14"
-		"decimal_starting_with_dot": {".5", nil, true}, // This causes an error as dot is not a valid start for any token
+		"single_integer":            {"42", []Token{{Type: TokenType_NumberLiteral, Value: "42"}}, false},
+		"single_float":              {"3.14", []Token{{Type: TokenType_NumberLiteral, Value: "3.14"}}, false},
+		"integer_with_decimal":      {"42.0", []Token{{Type: TokenType_NumberLiteral, Value: "42.0"}}, false},
+		"large_integer":             {"123456789", []Token{{Type: TokenType_NumberLiteral, Value: "123456789"}}, false},
+		"zero":                      {"0", []Token{{Type: TokenType_NumberLiteral, Value: "0"}}, false},
+		"float_starting_with_zero":  {"0.5", []Token{{Type: TokenType_NumberLiteral, Value: "0.5"}}, false},
+		"multiple_decimals":         {"3.14.15", nil, true}, // Multiple decimals cause an error after parsing "3.14"
+		"decimal_starting_with_dot": {".5", nil, true},      // This causes an error as dot is not a valid start for any token
 
 		// Test string literals
-		"empty_string":   {`""`, []Token{{Type: TokenType_StringLiteral, Value: ""}}, false},
-		"simple_string":  {`"hello"`, []Token{{Type: TokenType_StringLiteral, Value: "hello"}}, false},
-		"string_with_spaces": {`"hello world"`, []Token{{Type: TokenType_StringLiteral, Value: "hello world"}}, false},
+		"empty_string":              {`""`, []Token{{Type: TokenType_StringLiteral, Value: ""}}, false},
+		"simple_string":             {`"hello"`, []Token{{Type: TokenType_StringLiteral, Value: "hello"}}, false},
+		"string_with_spaces":        {`"hello world"`, []Token{{Type: TokenType_StringLiteral, Value: "hello world"}}, false},
 		"string_with_special_chars": {`"hello!@#$%^&*()"`, []Token{{Type: TokenType_StringLiteral, Value: "hello!@#$%^&*()"}}, false},
 		// Note: The following test will fail since the lexer doesn't handle escape sequences properly
 		// "string_with_quote_inside": {`"hello\"world"`, []Token{{Type: TokenType_StringLiteral, Value: "hello\"world"}}, true}, // This would cause an error
 
 		// Test labels
-		"simple_label":    {"hello", []Token{{Type: TokenType_Label, Value: "hello"}}, false},
+		"simple_label":          {"hello", []Token{{Type: TokenType_Label, Value: "hello"}}, false},
 		"label_with_underscore": {"hello_world", []Token{{Type: TokenType_Label, Value: "hello_world"}}, false},
-		"label_with_numbers": {"var123", []Token{{Type: TokenType_Label, Value: "var123"}}, false},
-		"numeric_label":   {"123var", []Token{{Type: TokenType_NumberLiteral, Value: "123"}, {Type: TokenType_Label, Value: "var"}}, false},
-		"single_letter":   {"a", []Token{{Type: TokenType_Label, Value: "a"}}, false},
-		"upper_case_label": {"VariableName", []Token{{Type: TokenType_Label, Value: "VariableName"}}, false},
+		"label_with_numbers":    {"var123", []Token{{Type: TokenType_Label, Value: "var123"}}, false},
+		"numeric_label":         {"123var", []Token{{Type: TokenType_NumberLiteral, Value: "123"}, {Type: TokenType_Label, Value: "var"}}, false},
+		"single_letter":         {"a", []Token{{Type: TokenType_Label, Value: "a"}}, false},
+		"upper_case_label":      {"VariableName", []Token{{Type: TokenType_Label, Value: "VariableName"}}, false},
 
 		// Test boolean literals
-		"boolean_true":    {"true", []Token{{Type: TokenType_BooleanLiteral, Value: "true"}}, false},
-		"boolean_false":   {"false", []Token{{Type: TokenType_BooleanLiteral, Value: "false"}}, false},
-		"bool_in_sentence": {"true false", []Token{{Type: TokenType_BooleanLiteral, Value: "true"}, {Type: TokenType_BooleanLiteral, Value: "false"}}, false},
+		"boolean_true":          {"true", []Token{{Type: TokenType_BooleanLiteral, Value: "true"}}, false},
+		"boolean_false":         {"false", []Token{{Type: TokenType_BooleanLiteral, Value: "false"}}, false},
+		"bool_in_sentence":      {"true false", []Token{{Type: TokenType_BooleanLiteral, Value: "true"}, {Type: TokenType_BooleanLiteral, Value: "false"}}, false},
 		"potential_boolean_not": {"not", []Token{{Type: TokenType_Label, Value: "not"}}, false}, // not is not a boolean literal
 
 		// Test multiple tokens
