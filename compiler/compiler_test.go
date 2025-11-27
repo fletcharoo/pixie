@@ -41,7 +41,7 @@ func Test_CompileExamples(t *testing.T) {
 
 func Test_VariableInvalidTypeAssign(t *testing.T) {
 	pixie := `
-	s : str = "hello world"
+	s str = "hello world"
 	s = 123
 	`
 

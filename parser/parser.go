@@ -94,7 +94,7 @@ func (p *Parser) parseStmtLabel() (stmt Stmt, err error) {
 			return
 		}
 		return stmt, nil
-	case lexer.TokenType_Colon:
+	case lexer.TokenType_Label:
 		stmt, err = p.parseStmtVarDeclare(tokLabel)
 		if err != nil {
 			err = fmt.Errorf("failed to parse statement variable declare: %w", err)
@@ -173,13 +173,6 @@ func (p *Parser) parseStmtVarDeclare(tokLabel lexer.Token) (stmt StmtVarDeclare,
 		return
 	}
 
-	// Consume colon token
-	if _, err = p.lexer.GetToken(); err != nil {
-		err = fmt.Errorf("failed to consume colon token: %w", err)
-		return
-	}
-
-	// Get the type of variable being declared
 	tokType, err := p.lexer.GetToken()
 	if err != nil {
 		err = fmt.Errorf("failed to get type token: %w", err)
