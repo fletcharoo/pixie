@@ -14,20 +14,27 @@ func Compile(node parser.Node) (lua string, err error) {
 	}
 
 	var sb strings.Builder
-	compileStmt(&sb, stmt)
+	c := &compiler{
+		sb: &sb,
+	}
+	c.compileStmt(stmt)
 	return sb.String(), nil
 }
 
-func compileStmt(sb *strings.Builder, stmt parser.Stmt) (err error) {
+type compiler struct {
+	sb *strings.Builder
+}
+
+func (c *compiler) compileStmt(stmt parser.Stmt) (err error) {
 	switch n := stmt.(type) {
 	case parser.StmtBlock:
-		err = compileStmtBlock(sb, n)
+		err = c.compileStmtBlock(n)
 		if err != nil {
 			err = fmt.Errorf("failed to compile statement block: %w", err)
 			return
 		}
 	case parser.StmtCallFunction:
-		err = compileStmtCallFunction(sb, n)
+		err = c.compileStmtCallFunction(n)
 		if err != nil {
 			err = fmt.Errorf("failed to compile statement call function: %w", err)
 			return
@@ -40,28 +47,28 @@ func compileStmt(sb *strings.Builder, stmt parser.Stmt) (err error) {
 	return nil
 }
 
-func compileExpr(sb *strings.Builder, expr parser.Expr) (err error) {
+func (c *compiler) compileExpr(expr parser.Expr) (err error) {
 	switch n := expr.(type) {
 	case parser.ExprBlock:
-		err = compileExprBlock(sb, n)
+		err = c.compileExprBlock(n)
 		if err != nil {
 			err = fmt.Errorf("failed to compile expression block: %w", err)
 			return
 		}
 	case parser.ExprNumber:
-		err = compileExprNumber(sb, n)
+		err = c.compileExprNumber(n)
 		if err != nil {
 			err = fmt.Errorf("failed to compile expression number: %w", err)
 			return
 		}
 	case parser.ExprString:
-		err = compileExprString(sb, n)
+		err = c.compileExprString(n)
 		if err != nil {
 			err = fmt.Errorf("failed to compile expression string: %w", err)
 			return
 		}
 	case parser.ExprBoolean:
-		err = compileExprBoolean(sb, n)
+		err = c.compileExprBoolean(n)
 		if err != nil {
 			err = fmt.Errorf("failed to compile expression boolean: %w", err)
 			return
@@ -74,61 +81,61 @@ func compileExpr(sb *strings.Builder, expr parser.Expr) (err error) {
 	return nil
 }
 
-func compileStmtBlock(sb *strings.Builder, stmt parser.StmtBlock) (err error) {
+func (c *compiler) compileStmtBlock(stmt parser.StmtBlock) (err error) {
 	for _, s := range stmt.Stmts {
-		err = compileStmt(sb, s)
+		err = c.compileStmt(s)
 		if err != nil {
 			err = fmt.Errorf("failed to compile stmt: %w", err)
 			return
 		}
-		sb.WriteRune('\n')
+		c.sb.WriteRune('\n')
 	}
 	return nil
 }
 
-func compileStmtCallFunction(sb *strings.Builder, stmt parser.StmtCallFunction) (err error) {
-	sb.WriteString(stmt.FunctionName)
-	sb.WriteRune('(')
+func (c *compiler) compileStmtCallFunction(stmt parser.StmtCallFunction) (err error) {
+	c.sb.WriteString(stmt.FunctionName)
+	c.sb.WriteRune('(')
 	argsLen := len(stmt.Args)
 
 	for i, arg := range stmt.Args {
-		if err = compileExpr(sb, arg); err != nil {
+		if err = c.compileExpr(arg); err != nil {
 			err = fmt.Errorf("failed to compile argument %d: %w", i, err)
 			return
 		}
 
 		if i < argsLen-1 {
-			sb.WriteRune(',')
+			c.sb.WriteRune(',')
 		}
 	}
 
-	sb.WriteRune(')')
+	c.sb.WriteRune(')')
 	return nil
 }
 
-func compileExprBlock(sb *strings.Builder, expr parser.ExprBlock) (err error) {
-	sb.WriteRune('(')
-	if err = compileExpr(sb, expr.Value); err != nil {
+func (c *compiler) compileExprBlock(expr parser.ExprBlock) (err error) {
+	c.sb.WriteRune('(')
+	if err = c.compileExpr(expr.Value); err != nil {
 		err = fmt.Errorf("failed to compile expression: %w", err)
 		return
 	}
-	sb.WriteRune(')')
+	c.sb.WriteRune(')')
 	return nil
 }
 
-func compileExprNumber(sb *strings.Builder, expr parser.ExprNumber) (err error) {
-	sb.WriteString(expr.Value)
+func (c *compiler) compileExprNumber(expr parser.ExprNumber) (err error) {
+	c.sb.WriteString(expr.Value)
 	return nil
 }
 
-func compileExprString(sb *strings.Builder, expr parser.ExprString) (err error) {
-	sb.WriteRune('"')
-	sb.WriteString(expr.Value)
-	sb.WriteRune('"')
+func (c *compiler) compileExprString(expr parser.ExprString) (err error) {
+	c.sb.WriteRune('"')
+	c.sb.WriteString(expr.Value)
+	c.sb.WriteRune('"')
 	return nil
 }
 
-func compileExprBoolean(sb *strings.Builder, expr parser.ExprBoolean) (err error) {
-	sb.WriteString(expr.Value)
+func (c *compiler) compileExprBoolean(expr parser.ExprBoolean) (err error) {
+	c.sb.WriteString(expr.Value)
 	return nil
 }
