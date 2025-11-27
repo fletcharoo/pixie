@@ -1,6 +1,13 @@
+// pass string literal expression to function
 print("hello world")
+
+// pass number literal expression to function
 print(123)
 print(3.14)
+
+// pass boolean literal expression to function
 print(true)
 print(false)
+
+// pass multiple expressions to function
 print("hello", "world")

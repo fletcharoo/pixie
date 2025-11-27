@@ -19,6 +19,7 @@ const (
 	TokenType_OpenParan             // TokenType_OpenParan represents a ( character
 	TokenType_CloseParan            // TokenType_CloseParan represents a ) character
 	TokenType_Comma                 // TokenType_Comma represents a , character
+	TokenType_ForwardSlash          // TokenType_ForwardSlash represents a / character
 )
 
 // TokenTypeString maps token type constants to their string representations for debugging and display purposes.
@@ -32,12 +33,14 @@ var (
 		TokenType_OpenParan:      "OpenParan",
 		TokenType_CloseParan:     "CloseParan",
 		TokenType_Comma:          "Comma",
+		TokenType_ForwardSlash:   "ForwardSlash",
 	}
 
 	TokenTypeCharactersMap map[rune]Token = map[rune]Token{
 		'(': {Type: TokenType_OpenParan},
 		')': {Type: TokenType_CloseParan},
 		',': {Type: TokenType_Comma},
+		'/': {Type: TokenType_ForwardSlash},
 	}
 )
 
@@ -149,6 +152,15 @@ func (l *Lexer) GetToken() (tok Token, err error) {
 		case '"':
 			l.index++
 			return l.getTokenStringLiteral()
+		case '/':
+			rNext, err := l.peekRune()
+			if err != nil {
+				return tok, err
+			}
+			if rNext == '/' {
+				l.skipComments()
+				continue
+			}
 		}
 
 		tok, ok = TokenTypeCharactersMap[r]
@@ -315,4 +327,20 @@ func (l *Lexer) getTokenBooleanLiteral() (tok Token, err error) {
 	}
 
 	return tok, nil
+}
+
+func (l *Lexer) skipComments() error {
+	for {
+		r, err := l.peekRune()
+		if err != nil {
+			return err
+		}
+
+		if r == '\n' || r == '\r' {
+			break
+		}
+		l.index++
+	}
+
+	return nil
 }
