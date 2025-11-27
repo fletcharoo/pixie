@@ -190,6 +190,14 @@ func (p *Parser) parseStmtVarDeclare(tokLabel lexer.Token) (stmt StmtVarDeclare,
 	var expr Expr
 	tokEqual, err := p.lexer.PeekToken()
 	if err != nil {
+		if errors.Is(err, io.EOF) {
+			// No assignment, just declaration - this is valid
+			return StmtVarDeclare{
+				VariableName: tokLabel.Value,
+				DataType:     dataType,
+				Expr:         nil,
+			}, nil
+		}
 		err = fmt.Errorf("failed to peek equal token: %w", err)
 		return
 	}
@@ -224,6 +232,7 @@ func (p *Parser) parseDataType() (dataType shared.DataType, err error) {
 
 	if tokLabel.Type != lexer.TokenType_Label {
 		err = fmt.Errorf("expected label, got %q", lexer.TokenTypeString[tokLabel.Type])
+		return
 	}
 
 	if len(tokLabel.Value) == 0 {
@@ -238,10 +247,54 @@ func (p *Parser) parseDataType() (dataType shared.DataType, err error) {
 		return shared.String{}, nil
 	case shared.Keyword_Boolean:
 		return shared.Boolean{}, nil
+	case shared.Keyword_List:
+		dataType, err = p.parseDataTypeList()
+		if err != nil {
+			err = fmt.Errorf("failed to parse data type list: %w", err)
+			return
+		}
+		return dataType, nil
 	}
 
-	err = fmt.Errorf("Unknown type %q", tokLabel.Value)
+	err = fmt.Errorf("unknown type %q", tokLabel.Value)
 	return
+}
+
+func (p *Parser) parseDataTypeList() (dataType shared.List, err error) {
+	// Consume open bracket
+	tokOpenBracket, err := p.lexer.GetToken()
+	if err != nil {
+		err = fmt.Errorf("failed to get open bracket token: %w", err)
+		return
+	}
+
+	if tokOpenBracket.Type != lexer.TokenType_OpenBracket {
+		err = fmt.Errorf("expected open bracket, got %q", tokOpenBracket.String())
+		return
+	}
+
+	// Parse sub data type
+	subDataType, err := p.parseDataType()
+	if err != nil {
+		err = fmt.Errorf("failed to parse list sub data type: %w", err)
+		return
+	}
+
+	// Consume close bracket
+	tokCloseBracket, err := p.lexer.GetToken()
+	if err != nil {
+		err = fmt.Errorf("failed to get close bracket token: %w", err)
+		return
+	}
+
+	if tokCloseBracket.Type != lexer.TokenType_CloseBracket {
+		err = fmt.Errorf("expected close bracket, got %q", tokCloseBracket.String())
+		return
+	}
+
+	return shared.List{
+		ListType: subDataType,
+	}, nil
 }
 
 func (p *Parser) parseStmtVarAssign(tokLabel lexer.Token) (stmt StmtVarAssign, err error) {
@@ -298,6 +351,13 @@ func (p *Parser) parseExpr() (expr Expr, err error) {
 			return
 		}
 		return expr, nil
+	case lexer.TokenType_OpenBracket:
+		expr, err = p.parseExprList()
+		if err != nil {
+			err = fmt.Errorf("failed to parse list expression: %w", err)
+			return
+		}
+		return expr, nil
 	}
 
 	err = fmt.Errorf("expected expression, got %q", tok.String())
@@ -343,5 +403,62 @@ func (p *Parser) parseExprBooleanLiteral() (expr ExprBoolean, err error) {
 
 	return ExprBoolean{
 		Value: tok.Value,
+	}, nil
+}
+
+func (p *Parser) parseExprList() (expr ExprList, err error) {
+	// Consume open bracket
+	tokOpenBracket, err := p.lexer.GetToken()
+	if err != nil {
+		err = fmt.Errorf("failed to consume open bracket: %w", err)
+		return
+	}
+	if tokOpenBracket.Type != lexer.TokenType_OpenBracket {
+		err = fmt.Errorf("expected open bracket, got %q", tokOpenBracket.String())
+	}
+
+	// parse the inside expressions
+	exprs := make([]Expr, 0)
+	var listExpr Expr
+	var tokNext lexer.Token
+parseExprListLoop:
+	for {
+		listExpr, err = p.parseExpr()
+		if err != nil {
+			err = fmt.Errorf("failed to parse expression: %w", err)
+			return
+		}
+
+		exprs = append(exprs, listExpr)
+
+		tokNext, err = p.lexer.PeekToken()
+		if err != nil {
+			err = fmt.Errorf("failed to peek token: %w", err)
+			return
+		}
+
+		switch tokNext.Type {
+		case lexer.TokenType_CloseBracket:
+			_, err = p.lexer.GetToken()
+			if err != nil {
+				err = fmt.Errorf("failed to get close paran token: %w", err)
+				return
+			}
+			break parseExprListLoop
+		case lexer.TokenType_Comma:
+			_, err = p.lexer.GetToken()
+			if err != nil {
+				err = fmt.Errorf("failed to get comma token: %w", err)
+				return
+			}
+			continue
+		default:
+			err = fmt.Errorf("unexpected token %q", tokNext.String())
+			return
+		}
+	}
+
+	return ExprList{
+		Values: exprs,
 	}, nil
 }

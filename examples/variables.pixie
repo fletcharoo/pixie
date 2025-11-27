@@ -24,3 +24,12 @@ b1 = true
 
 // declare and assign boolean value
 b2 bool = false
+
+// declare a list variable
+l1 list[str]
+
+// assign a list variable
+l1 = ["hello", "world"]
+
+// declare and assign a list value
+l2 list[str] = ["something", "else"]

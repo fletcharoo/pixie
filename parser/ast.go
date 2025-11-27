@@ -12,6 +12,7 @@ const (
 	NodeType_ExprNumber
 	NodeType_ExprString
 	NodeType_ExprBoolean
+	NodeType_ExprList
 )
 
 type Node interface {
@@ -38,6 +39,7 @@ func (ExprBlock) Type() int        { return NodeType_ExprBlock }
 func (ExprNumber) Type() int       { return NodeType_ExprNumber }
 func (ExprString) Type() int       { return NodeType_ExprString }
 func (ExprBoolean) Type() int      { return NodeType_ExprBoolean }
+func (ExprList) Type() int         { return NodeType_ExprList }
 
 // Ensures all statements implement the Stmt interface
 func (StmtBlock) Stmt()        {}
@@ -50,6 +52,7 @@ func (ExprBlock) Expr()   {}
 func (ExprNumber) Expr()  {}
 func (ExprString) Expr()  {}
 func (ExprBoolean) Expr() {}
+func (ExprList) Expr()    {}
 
 type StmtBlock struct {
 	Stmts []Stmt
@@ -101,4 +104,18 @@ type ExprBoolean struct {
 
 func (e ExprBoolean) DataType() shared.DataType {
 	return shared.Boolean{}
+}
+
+type ExprList struct {
+	Values []Expr
+}
+
+func (e ExprList) DataType() shared.DataType {
+	if len(e.Values) == 0 {
+		return shared.List{}
+	}
+
+	return shared.List{
+		ListType: e.Values[0].DataType(),
+	}
 }

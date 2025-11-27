@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
@@ -460,4 +461,26 @@ func TestEdgeCasesAndUnicode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, Token{Type: TokenType_Label, Value: "résumé"}, token3)
 	})
+}
+
+func Test_temp(t *testing.T) {
+	input := "s"
+	l := New(input)
+
+	// Consume the s token
+	l.GetToken()
+
+	// PeekToken should return an EOF error
+	_, err := l.PeekToken()
+	require.ErrorIs(t, err, io.EOF)
+
+	// PeekToken should keep returning an EOF error
+	_, err = l.PeekToken()
+	require.ErrorIs(t, err, io.EOF)
+
+	_, err = l.PeekToken()
+	require.ErrorIs(t, err, io.EOF)
+
+	_, err = l.PeekToken()
+	require.ErrorIs(t, err, io.EOF)
 }

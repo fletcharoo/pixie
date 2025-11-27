@@ -79,27 +79,28 @@ func (c *compiler) compileStmt(stmt parser.Stmt) (err error) {
 func (c *compiler) compileExpr(expr parser.Expr) (err error) {
 	switch n := expr.(type) {
 	case parser.ExprBlock:
-		err = c.compileExprBlock(n)
-		if err != nil {
+		if err = c.compileExprBlock(n); err != nil {
 			err = fmt.Errorf("failed to compile expression block: %w", err)
 			return
 		}
 	case parser.ExprNumber:
-		err = c.compileExprNumber(n)
-		if err != nil {
+		if err = c.compileExprNumber(n); err != nil {
 			err = fmt.Errorf("failed to compile expression number: %w", err)
 			return
 		}
 	case parser.ExprString:
-		err = c.compileExprString(n)
-		if err != nil {
+		if err = c.compileExprString(n); err != nil {
 			err = fmt.Errorf("failed to compile expression string: %w", err)
 			return
 		}
 	case parser.ExprBoolean:
-		err = c.compileExprBoolean(n)
-		if err != nil {
+		if err = c.compileExprBoolean(n); err != nil {
 			err = fmt.Errorf("failed to compile expression boolean: %w", err)
+			return
+		}
+	case parser.ExprList:
+		if err = c.compileExprList(n); err != nil {
+			err = fmt.Errorf("failed to compile expression list: %w", err)
 			return
 		}
 	default:
@@ -136,12 +137,9 @@ func (c *compiler) compileStmtBlock(stmt parser.StmtBlock) (err error) {
 	return nil
 }
 
-func (c *compiler) compileStmtCallFunction(stmt parser.StmtCallFunction) (err error) {
-	c.sb.WriteString(stmt.FunctionName)
-	c.sb.WriteRune('(')
-	argsLen := len(stmt.Args)
-
-	for i, arg := range stmt.Args {
+func (c *compiler) compileCommaSeparatedExpressions(exprs []parser.Expr) (err error) {
+	argsLen := len(exprs)
+	for i, arg := range exprs {
 		if err = c.compileExpr(arg); err != nil {
 			err = fmt.Errorf("failed to compile argument %d: %w", i, err)
 			return
@@ -151,7 +149,16 @@ func (c *compiler) compileStmtCallFunction(stmt parser.StmtCallFunction) (err er
 			c.sb.WriteRune(',')
 		}
 	}
+	return nil
+}
 
+func (c *compiler) compileStmtCallFunction(stmt parser.StmtCallFunction) (err error) {
+	c.sb.WriteString(stmt.FunctionName)
+	c.sb.WriteRune('(')
+	if err = c.compileCommaSeparatedExpressions(stmt.Args); err != nil {
+		err = fmt.Errorf("failed to compile comma separated expressions: %w", err)
+		return
+	}
 	c.sb.WriteRune(')')
 	return nil
 }
@@ -236,5 +243,15 @@ func (c *compiler) compileExprString(expr parser.ExprString) (err error) {
 
 func (c *compiler) compileExprBoolean(expr parser.ExprBoolean) (err error) {
 	c.sb.WriteString(expr.Value)
+	return nil
+}
+
+func (c *compiler) compileExprList(expr parser.ExprList) (err error) {
+	c.sb.WriteRune('[')
+	if err = c.compileCommaSeparatedExpressions(expr.Values); err != nil {
+		err = fmt.Errorf("failed to compile comma separated expressions: %w", err)
+		return
+	}
+	c.sb.WriteRune(']')
 	return nil
 }

@@ -23,6 +23,8 @@ const (
 	TokenType_ForwardSlash          // TokenType_ForwardSlash represents a / character
 	TokenType_Equal                 // TokenType_Equal represents a = character
 	TokenType_Colon                 // TokenType_Colon represents a : character
+	TokenType_OpenBracket           // TokenType_OpenBracket representes a [ character
+	TokenType_CloseBracket          // TokenType_CloseBracet represents a ] character
 )
 
 // TokenTypeString maps token type constants to their string representations for debugging and display purposes.
@@ -39,6 +41,8 @@ var (
 		TokenType_ForwardSlash:   "ForwardSlash",
 		TokenType_Equal:          "Equal",
 		TokenType_Colon:          "Colon",
+		TokenType_OpenBracket:    "OpenBracket",
+		TokenType_CloseBracket:   "CloseBracket",
 	}
 
 	TokenTypeCharactersMap map[rune]Token = map[rune]Token{
@@ -48,6 +52,8 @@ var (
 		'/': {Type: TokenType_ForwardSlash},
 		'=': {Type: TokenType_Equal},
 		':': {Type: TokenType_Colon},
+		'[': {Type: TokenType_OpenBracket},
+		']': {Type: TokenType_CloseBracket},
 	}
 )
 
@@ -193,6 +199,9 @@ func (l *Lexer) PeekToken() (tok Token, err error) {
 	}
 
 	tok, err = l.GetToken()
+	if err != nil {
+		return tok, err
+	}
 	l.buf = &tok
 	return tok, err
 }

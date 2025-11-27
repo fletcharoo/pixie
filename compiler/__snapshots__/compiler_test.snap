@@ -19,5 +19,8 @@ n2 = 3.14
 b1 = false
 b1 = true
 b2 = false
+l1 = []
+l1 = ["hello","world"]
+l2 = ["something","else"]
 
 ---
