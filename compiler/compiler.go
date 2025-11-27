@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+const (
+	globalScope = 1
+)
+
 var (
 	ErrInvalidTypeAssign = fmt.Errorf("invalid type assign")
 )
@@ -150,23 +154,53 @@ func (c *compiler) compileStmtCallFunction(stmt parser.StmtCallFunction) (err er
 }
 
 func (c *compiler) compileStmtAssign(stmt parser.StmtAssign) (err error) {
+	if len(stmt.VariableName) == 0 {
+		err = fmt.Errorf("variable name is empty")
+		return
+	}
+
 	dataType := stmt.Expr.DataType()
 	v, ok := c.variables[stmt.VariableName]
-	if ok && v.dataType != dataType {
+
+	if ok {
+		return c.compileStmtAssignExists(stmt, dataType, v)
+	}
+
+	return c.compileStmtAssignNotExists(stmt, dataType)
+}
+
+func (c *compiler) compileStmtAssignExists(stmt parser.StmtAssign, dataType string, v variable) (err error) {
+	if dataType != v.dataType {
 		err = errors.Join(ErrInvalidTypeAssign, fmt.Errorf("variable %q wants %q got %q", stmt.VariableName, v.dataType, dataType))
 		return
 	}
 
-	if !ok {
-		c.variables[stmt.VariableName] = variable{
-			scope:    c.scope,
-			dataType: dataType,
-		}
+	c.sb.WriteString(stmt.VariableName)
+	c.sb.WriteString(" = ")
+	if err = c.compileExpr(stmt.Expr); err != nil {
+		err = fmt.Errorf("failed to compile expression: %w", err)
+		return
+	}
+
+	return nil
+}
+
+func (c *compiler) compileStmtAssignNotExists(stmt parser.StmtAssign, dataType string) (err error) {
+	c.variables[stmt.VariableName] = variable{
+		scope:    c.scope,
+		dataType: dataType,
+	}
+
+	if c.scope != globalScope {
+		c.sb.WriteString("local ")
 	}
 
 	c.sb.WriteString(stmt.VariableName)
 	c.sb.WriteString(" = ")
-	c.compileExpr(stmt.Expr)
+	if err = c.compileExpr(stmt.Expr); err != nil {
+		err = fmt.Errorf("failed to compile expression: %w", err)
+		return
+	}
 	return nil
 }
 
