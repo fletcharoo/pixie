@@ -1,5 +1,10 @@
 
 [Test_CompileExamples/function_call.pixie - 1]
 print("hello world")
+print(123)
+print(3.14)
+print(true)
+print(false)
+print("hello","world")
 
 ---
