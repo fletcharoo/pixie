@@ -1,0 +1,10 @@
+// assign a string variable
+str = "hello world"
+
+// assign a number variable
+int = 123
+float = 3.14
+
+// assign a boolean variable
+bTrue = true
+bFalse = false

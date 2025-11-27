@@ -1,9 +1,14 @@
 package compiler
 
 import (
+	"errors"
 	"fmt"
 	"pixie/parser"
 	"strings"
+)
+
+var (
+	ErrInvalidTypeAssign = fmt.Errorf("invalid type assign")
 )
 
 func Compile(node parser.Node) (lua string, err error) {
@@ -15,14 +20,25 @@ func Compile(node parser.Node) (lua string, err error) {
 
 	var sb strings.Builder
 	c := &compiler{
-		sb: &sb,
+		sb:        &sb,
+		variables: make(map[string]variable, 0),
 	}
-	c.compileStmt(stmt)
+	if err = c.compileStmt(stmt); err != nil {
+		err = fmt.Errorf("failed to compile statement: %w", err)
+		return
+	}
 	return sb.String(), nil
 }
 
 type compiler struct {
-	sb *strings.Builder
+	sb        *strings.Builder
+	scope     int
+	variables map[string]variable
+}
+
+type variable struct {
+	scope    int
+	dataType string
 }
 
 func (c *compiler) compileStmt(stmt parser.Stmt) (err error) {
@@ -37,6 +53,12 @@ func (c *compiler) compileStmt(stmt parser.Stmt) (err error) {
 		err = c.compileStmtCallFunction(n)
 		if err != nil {
 			err = fmt.Errorf("failed to compile statement call function: %w", err)
+			return
+		}
+	case parser.StmtAssign:
+		err = c.compileStmtAssign(n)
+		if err != nil {
+			err = fmt.Errorf("failed to compile statement assign: %w", err)
 			return
 		}
 	default:
@@ -82,6 +104,7 @@ func (c *compiler) compileExpr(expr parser.Expr) (err error) {
 }
 
 func (c *compiler) compileStmtBlock(stmt parser.StmtBlock) (err error) {
+	c.scope += 1
 	for _, s := range stmt.Stmts {
 		err = c.compileStmt(s)
 		if err != nil {
@@ -90,6 +113,19 @@ func (c *compiler) compileStmtBlock(stmt parser.StmtBlock) (err error) {
 		}
 		c.sb.WriteRune('\n')
 	}
+
+	variablesToRemove := make([]string, 0, len(c.variables))
+	for k, v := range c.variables {
+		if v.scope == c.scope {
+			variablesToRemove = append(variablesToRemove, k)
+		}
+	}
+
+	for _, name := range variablesToRemove {
+		delete(c.variables, name)
+	}
+
+	c.scope -= 1
 	return nil
 }
 
@@ -110,6 +146,27 @@ func (c *compiler) compileStmtCallFunction(stmt parser.StmtCallFunction) (err er
 	}
 
 	c.sb.WriteRune(')')
+	return nil
+}
+
+func (c *compiler) compileStmtAssign(stmt parser.StmtAssign) (err error) {
+	dataType := stmt.Expr.DataType()
+	v, ok := c.variables[stmt.VariableName]
+	if ok && v.dataType != dataType {
+		err = errors.Join(ErrInvalidTypeAssign, fmt.Errorf("variable %q wants %q got %q", stmt.VariableName, v.dataType, dataType))
+		return
+	}
+
+	if !ok {
+		c.variables[stmt.VariableName] = variable{
+			scope:    c.scope,
+			dataType: dataType,
+		}
+	}
+
+	c.sb.WriteString(stmt.VariableName)
+	c.sb.WriteString(" = ")
+	c.compileExpr(stmt.Expr)
 	return nil
 }
 

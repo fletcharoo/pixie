@@ -20,6 +20,7 @@ const (
 	TokenType_CloseParan            // TokenType_CloseParan represents a ) character
 	TokenType_Comma                 // TokenType_Comma represents a , character
 	TokenType_ForwardSlash          // TokenType_ForwardSlash represents a / character
+	TokenType_Equal                 // TokenType_Equal represents a = character
 )
 
 // TokenTypeString maps token type constants to their string representations for debugging and display purposes.
@@ -34,6 +35,7 @@ var (
 		TokenType_CloseParan:     "CloseParan",
 		TokenType_Comma:          "Comma",
 		TokenType_ForwardSlash:   "ForwardSlash",
+		TokenType_Equal:          "Equal",
 	}
 
 	TokenTypeCharactersMap map[rune]Token = map[rune]Token{
@@ -41,6 +43,7 @@ var (
 		')': {Type: TokenType_CloseParan},
 		',': {Type: TokenType_Comma},
 		'/': {Type: TokenType_ForwardSlash},
+		'=': {Type: TokenType_Equal},
 	}
 )
 

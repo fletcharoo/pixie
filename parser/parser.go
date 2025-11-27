@@ -94,6 +94,13 @@ func (p *Parser) parseStmtLabel() (stmt Stmt, err error) {
 			return
 		}
 		return stmt, nil
+	case lexer.TokenType_Equal:
+		stmt, err = p.parseStmtAssign(tokLabel)
+		if err != nil {
+			err = fmt.Errorf("failed to parse call function: %w", err)
+			return
+		}
+		return stmt, nil
 	default:
 		err = fmt.Errorf("expected label statement, got %q %q", tokLabel.String(), tokNext.String())
 		return
@@ -102,8 +109,7 @@ func (p *Parser) parseStmtLabel() (stmt Stmt, err error) {
 
 func (p *Parser) parseStmtCallFunction(tokLabel lexer.Token) (stmt StmtCallFunction, err error) {
 	// Consume the open paran token.
-	_, err = p.lexer.GetToken()
-	if err != nil {
+	if _, err = p.lexer.GetToken(); err != nil {
 		err = fmt.Errorf("failed to get open paran token: %w", err)
 		return
 	}
@@ -151,6 +157,30 @@ parseStmtCallFunctionLoop:
 	return StmtCallFunction{
 		FunctionName: tokLabel.Value,
 		Args:         exprs,
+	}, nil
+}
+
+func (p *Parser) parseStmtAssign(tokLabel lexer.Token) (stmt StmtAssign, err error) {
+	if len(tokLabel.Value) == 0 {
+		err = fmt.Errorf("variable name is empty")
+		return
+	}
+
+	// Consume the equal token
+	if _, err = p.lexer.GetToken(); err != nil {
+		err = fmt.Errorf("failed to consume equal token: %w", err)
+		return
+	}
+
+	expr, err := p.parseExpr()
+	if err != nil {
+		err = fmt.Errorf("failed to parse expression: %w", err)
+		return
+	}
+
+	return StmtAssign{
+		VariableName: tokLabel.Value,
+		Expr:         expr,
 	}, nil
 }
 

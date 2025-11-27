@@ -38,3 +38,18 @@ func Test_CompileExamples(t *testing.T) {
 		})
 	}
 }
+
+func Test_VariableInvalidTypeAssign(t *testing.T) {
+	pixie := `
+	str = "hello world"
+	str = 123
+	`
+
+	l := lexer.New(pixie)
+	p := parser.New(l)
+	node, err := p.Parse()
+	require.NoError(t, err, "failed to parse")
+
+	_, err = Compile(node)
+	require.ErrorIs(t, err, ErrInvalidTypeAssign)
+}

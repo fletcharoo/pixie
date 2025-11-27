@@ -8,3 +8,12 @@ print(false)
 print("hello","world")
 
 ---
+
+[Test_CompileExamples/variables.pixie - 1]
+str = "hello world"
+int = 123
+float = 3.14
+bTrue = true
+bFalse = false
+
+---
