@@ -28,3 +28,10 @@ m2 = {1:true,2:false}
 s3 = s1
 
 ---
+
+[Test_CompileExamples/custom_objects.pixie - 1]
+
+p1 = {"name":"","age":0}
+p1 = {"name":"Andrew","age":35}
+
+---

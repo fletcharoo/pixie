@@ -27,6 +27,7 @@ func Compile(node parser.Node) (lua string, err error) {
 	c := &compiler{
 		sb:        &sb,
 		variables: make(map[string]variable, 0),
+		objects:   make(map[string]object, 0),
 	}
 	if err = c.compileStmt(stmt); err != nil {
 		err = fmt.Errorf("failed to compile statement: %w", err)
@@ -39,11 +40,16 @@ type compiler struct {
 	sb        *strings.Builder
 	scope     int
 	variables map[string]variable
+	objects   map[string]object
 }
 
 type variable struct {
 	scope    int
 	dataType shared.DataType
+}
+
+type object struct {
+	fields []parser.FieldTypePair
 }
 
 func (c *compiler) compileStmt(stmt parser.Stmt) (err error) {
@@ -66,6 +72,11 @@ func (c *compiler) compileStmt(stmt parser.Stmt) (err error) {
 	case parser.StmtVarAssign:
 		if err = c.compileStmtVarAssign(n); err != nil {
 			err = fmt.Errorf("failed to compile statement assign: %w", err)
+			return
+		}
+	case parser.StmtObjDefine:
+		if err = c.compileStmtObjDefine(n); err != nil {
+			err = fmt.Errorf("failed to compile statement object define: %w", err)
 			return
 		}
 	default:
@@ -198,7 +209,10 @@ func (c *compiler) compileStmtVarDeclare(stmt parser.StmtVarDeclare) (err error)
 
 	// Write the expression
 	if stmt.Expr == nil {
-		c.sb.WriteString(variable.dataType.ZeroValue())
+		if err = c.compileDataTypeZeroValue(variable.dataType); err != nil {
+			err = fmt.Errorf("failed to compile data type zero value: %w", err)
+			return
+		}
 	} else {
 		if err = c.compileExpr(stmt.Expr); err != nil {
 			err = fmt.Errorf("failed to parse expression: %w", err)
@@ -244,6 +258,17 @@ func (c *compiler) compileStmtVarAssign(stmt parser.StmtVarAssign) (err error) {
 	return nil
 }
 
+func (c *compiler) compileStmtObjDefine(stmt parser.StmtObjDefine) (err error) {
+	if _, ok := c.objects[stmt.Name]; ok {
+		err = fmt.Errorf("object definition %q already exists", stmt.Name)
+		return
+	}
+	c.objects[stmt.Name] = object{
+		fields: stmt.Fields,
+	}
+	return nil
+}
+
 func (c *compiler) compileExprBlock(expr parser.ExprBlock) (err error) {
 	c.sb.WriteRune('(')
 	if err = c.compileExpr(expr.Value); err != nil {
@@ -284,9 +309,30 @@ func (c *compiler) compileExprTable(expr parser.ExprTable) (err error) {
 	c.sb.WriteRune('{')
 	argsLen := len(expr.Pairs)
 	for i, pair := range expr.Pairs {
-		if err = c.compileExpr(pair.Key); err != nil {
-			err = fmt.Errorf("failed to compile key %d: %w", i, err)
-			return
+		// Here I'm making the explicit decision that when creating a table the keys must be primitives (and labels in the case of when this is used to create objects, in which case the label is wrapped in double quotes). I'm doing this to reduce the complexity of the language and compiler, and also because both maps and objects use an underlying table expression and it was going to be hell trying to separate the underlying expressions while maintaining a clean syntax.
+		switch k := pair.Key.(type) {
+		case parser.ExprNumber:
+			if err = c.compileExprNumber(k); err != nil {
+				err = fmt.Errorf("failed to compile key: %w", err)
+				return
+			}
+		case parser.ExprString:
+			if err = c.compileExprString(k); err != nil {
+				err = fmt.Errorf("failed to compile key: %w", err)
+				return
+			}
+		case parser.ExprBoolean:
+			if err = c.compileExprBoolean(k); err != nil {
+				err = fmt.Errorf("failed to compile key: %w", err)
+				return
+			}
+		case parser.ExprVariable:
+			c.sb.WriteRune('"')
+			if err = c.compileExprVariable(k); err != nil {
+				err = fmt.Errorf("failed to compile key: %w", err)
+				return
+			}
+			c.sb.WriteRune('"')
 		}
 
 		c.sb.WriteRune(':')
@@ -321,6 +367,8 @@ func (c *compiler) checkExpressionValidDataType(dataType shared.DataType, expr p
 		return c.checkExpressionValidList(d, expr)
 	case shared.Map:
 		return c.checkExpressionValidMap(d, expr)
+	case shared.Custom:
+		return c.checkExpressionValidCustom(d, expr)
 	}
 
 	err = fmt.Errorf("unknown type: %#v", dataType)
@@ -392,5 +440,88 @@ func (c *compiler) checkExpressionValidMap(dataType shared.Map, expr parser.Expr
 			return
 		}
 	}
+	return nil
+}
+
+func (c *compiler) checkExpressionValidCustom(dataType shared.Custom, expr parser.Expr) (err error) {
+	var exprTable parser.ExprTable
+	switch e := expr.(type) {
+	case parser.ExprTable:
+		exprTable = e
+	default:
+		err = fmt.Errorf("expected %q got %T", dataType.Name, e)
+		return
+	}
+
+	obj, ok := c.objects[dataType.Name]
+	if !ok {
+		err = fmt.Errorf("object %q not found", dataType.Name)
+		return
+	}
+
+	for _, pair := range exprTable.Pairs {
+		var keyName string
+		switch kt := pair.Key.(type) {
+		case parser.ExprVariable:
+			keyName = kt.Name
+		default:
+			err = fmt.Errorf("field type %T not a label", kt)
+			return
+		}
+
+		var keyFound bool
+		var field parser.FieldTypePair
+		for _, f := range obj.fields {
+			if f.Field == keyName {
+				keyFound = true
+				field = f
+			}
+		}
+
+		if !keyFound {
+			err = fmt.Errorf("key %q not found in object %q", keyName, dataType.Name)
+			return
+		}
+
+		if err = c.checkExpressionValidDataType(field.Type, pair.Value); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *compiler) compileDataTypeZeroValue(dataType shared.DataType) (err error) {
+	switch d := dataType.(type) {
+	case shared.Custom:
+		return c.compileObjectZeroValue(d)
+	default:
+		c.sb.WriteString(d.ZeroValue())
+	}
+	return nil
+}
+
+func (c *compiler) compileObjectZeroValue(dataType shared.Custom) (err error) {
+	obj, ok := c.objects[dataType.Name]
+	if !ok {
+		err = fmt.Errorf("object %q does not exist", dataType.Name)
+		return
+	}
+
+	fieldsLen := len(obj.fields)
+	c.sb.WriteRune('{')
+	for i, field := range obj.fields {
+		c.sb.WriteRune('"')
+		c.sb.WriteString(field.Field)
+		c.sb.WriteRune('"')
+		c.sb.WriteRune(':')
+		if err = c.compileDataTypeZeroValue(field.Type); err != nil {
+			return err
+		}
+		if i < fieldsLen-1 {
+			c.sb.WriteRune(',')
+		}
+	}
+	c.sb.WriteRune('}')
 	return nil
 }

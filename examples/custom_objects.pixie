@@ -1,0 +1,11 @@
+// define the person object
+person obj {
+    name str
+    age num
+}
+
+// declare a person variable
+p1 person
+
+// assign a person variable
+p1 = {name: "Andrew", age: 35}

@@ -8,6 +8,7 @@ const (
 	NodeType_StmtCallFunction
 	NodeType_StmtVarDeclare
 	NodeType_StmtVarAssign
+	NodeType_StmtObjDefine
 	NodeType_ExprBlock
 	NodeType_ExprNumber
 	NodeType_ExprString
@@ -36,6 +37,7 @@ func (StmtBlock) Type() int        { return NodeType_StmtBlock }
 func (StmtCallFunction) Type() int { return NodeType_StmtCallFunction }
 func (StmtVarDeclare) Type() int   { return NodeType_StmtVarDeclare }
 func (StmtVarAssign) Type() int    { return NodeType_StmtVarAssign }
+func (StmtObjDefine) Type() int    { return NodeType_StmtObjDefine }
 func (ExprBlock) Type() int        { return NodeType_ExprBlock }
 func (ExprNumber) Type() int       { return NodeType_ExprNumber }
 func (ExprString) Type() int       { return NodeType_ExprString }
@@ -49,6 +51,7 @@ func (StmtBlock) Stmt()        {}
 func (StmtCallFunction) Stmt() {}
 func (StmtVarDeclare) Stmt()   {}
 func (StmtVarAssign) Stmt()    {}
+func (StmtObjDefine) Stmt()    {}
 
 // Ensures all expressions implement the Expr interface
 func (ExprBlock) Expr()    {}
@@ -79,6 +82,16 @@ type StmtVarAssign struct {
 	Expr         Expr
 }
 
+type FieldTypePair struct {
+	Field string
+	Type  shared.DataType
+}
+
+type StmtObjDefine struct {
+	Name   string
+	Fields []FieldTypePair
+}
+
 type ExprBlock struct {
 	Value Expr
 }
@@ -99,13 +112,13 @@ type ExprList struct {
 	Values []Expr
 }
 
-type KeyValuePair struct {
+type TablePair struct {
 	Key   Expr
 	Value Expr
 }
 
 type ExprTable struct {
-	Pairs []KeyValuePair
+	Pairs []TablePair
 }
 
 type ExprVariable struct {

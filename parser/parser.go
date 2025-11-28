@@ -96,6 +96,15 @@ func (p *Parser) parseStmtLabel() (stmt Stmt, err error) {
 		}
 		return stmt, nil
 	case lexer.TokenType_Label:
+		if tokNext.Value == shared.Keyword_Object {
+			stmt, err = p.parseStmtObjDefine(tokLabel)
+			if err != nil {
+				err = fmt.Errorf("failed to parse statement object define: %w", err)
+				return
+			}
+			return stmt, err
+		}
+
 		stmt, err = p.parseStmtVarDeclare(tokLabel)
 		if err != nil {
 			err = fmt.Errorf("failed to parse statement variable declare: %w", err)
@@ -223,6 +232,92 @@ func (p *Parser) parseStmtVarDeclare(tokLabel lexer.Token) (stmt StmtVarDeclare,
 	}, nil
 }
 
+func (p *Parser) parseStmtObjDefine(tokLabel lexer.Token) (stmt StmtObjDefine, err error) {
+	if len(tokLabel.Value) == 0 {
+		err = fmt.Errorf("object name is empty")
+		return
+	}
+
+	if _, ok := shared.IllegalKeywords[tokLabel.Value]; ok {
+		err = fmt.Errorf("variable name %q is illegal", tokLabel.Value)
+		return
+	}
+
+	// Consume the obj token
+	tokObj, err := p.lexer.GetToken()
+	if err != nil {
+		err = fmt.Errorf("failed to consume the obj token: %w", err)
+		return
+	}
+
+	if tokObj.Value != shared.Keyword_Object {
+		err = fmt.Errorf("expected \"obj\" got %q", tokObj.Value)
+		return
+	}
+
+	// Consume open brace
+	if err = p.lexer.ConsumeToken(lexer.TokenType_OpenBrace); err != nil {
+		err = fmt.Errorf("failed to consume open brace: %w", err)
+		return
+	}
+	fields := make([]FieldTypePair, 0)
+	var tokNext lexer.Token
+parseStmtObjDefine:
+	for {
+		// Parse field name label
+		var tokFieldName lexer.Token
+		tokFieldName, err = p.lexer.GetToken()
+		if err != nil {
+			err = fmt.Errorf("failed to get field name token: %w", err)
+			return
+		}
+		if tokFieldName.Type != lexer.TokenType_Label {
+			err = fmt.Errorf("expected label, got %q", tokFieldName.String())
+			return
+		}
+
+		// Parse field type
+		var fieldType shared.DataType
+		fieldType, err = p.parseDataType()
+		if err != nil {
+			err = fmt.Errorf("failed to parse field type: %w", err)
+			return
+		}
+
+		// Append to pairs
+		fields = append(fields, FieldTypePair{
+			Field: tokFieldName.Value,
+			Type:  fieldType,
+		})
+
+		tokNext, err = p.lexer.PeekToken()
+		if err != nil {
+			err = fmt.Errorf("failed to peek token: %w", err)
+			return
+		}
+
+		switch tokNext.Type {
+		case lexer.TokenType_CloseBrace:
+			_, err = p.lexer.GetToken()
+			if err != nil {
+				err = fmt.Errorf("failed to get close brace token: %w", err)
+				return
+			}
+			break parseStmtObjDefine
+		case lexer.TokenType_Label:
+			continue
+		default:
+			err = fmt.Errorf("unexpected token %q", tokNext.String())
+			return
+		}
+	}
+
+	return StmtObjDefine{
+		Name:   tokLabel.Value,
+		Fields: fields,
+	}, nil
+}
+
 func (p *Parser) parseDataType() (dataType shared.DataType, err error) {
 	tokLabel, err := p.lexer.GetToken()
 	if err != nil {
@@ -240,6 +335,7 @@ func (p *Parser) parseDataType() (dataType shared.DataType, err error) {
 		return
 	}
 
+	// Check if it's a built-in data type.
 	switch tokLabel.Value {
 	case shared.Keyword_Number:
 		return shared.Number{}, nil
@@ -263,8 +359,8 @@ func (p *Parser) parseDataType() (dataType shared.DataType, err error) {
 		return dataType, nil
 	}
 
-	err = fmt.Errorf("unknown type %q", tokLabel.Value)
-	return
+	// If it's not built-in it must be custom
+	return shared.Custom{Name: tokLabel.Value}, nil
 }
 
 func (p *Parser) parseDataTypeList() (dataType shared.List, err error) {
@@ -537,7 +633,7 @@ func (p *Parser) parseExprTable() (expr ExprTable, err error) {
 		return
 	}
 
-	pairs := make([]KeyValuePair, 0)
+	pairs := make([]TablePair, 0)
 
 	// Parse inside fo table
 	var tokNext lexer.Token
@@ -566,7 +662,7 @@ parseExprMapLoop:
 		}
 
 		// Append to pairs
-		pairs = append(pairs, KeyValuePair{
+		pairs = append(pairs, TablePair{
 			Key:   keyExpr,
 			Value: valueExpr,
 		})
