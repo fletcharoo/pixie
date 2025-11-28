@@ -214,6 +214,21 @@ func (c *compiler) compileStmtVarDeclare(stmt parser.StmtVarDeclare) (err error)
 			return
 		}
 	} else {
+		// Check if this is an incomplete object assignment that needs to be filled with zero values
+		if exprTable, isTable := stmt.Expr.(parser.ExprTable); isTable {
+			if customType, isCustom := variable.dataType.(shared.Custom); isCustom {
+				if _, isObject := c.objects[customType.Name]; isObject {
+					// This is an assignment of a table to a custom object variable
+					// We need to handle incomplete object assignments by filling missing fields
+					if err = c.compileExprTableWithZeroValues(exprTable, customType); err != nil {
+						err = fmt.Errorf("failed to compile expression table with zero values: %w", err)
+						return
+					}
+					return nil
+				}
+			}
+		}
+
 		if err = c.compileExpr(stmt.Expr); err != nil {
 			err = fmt.Errorf("failed to parse expression: %w", err)
 			return
@@ -250,6 +265,22 @@ func (c *compiler) compileStmtVarAssign(stmt parser.StmtVarAssign) (err error) {
 
 	c.sb.WriteString(stmt.VariableName)
 	c.sb.WriteString(" = ")
+
+	// Check if this is an incomplete object assignment that needs to be filled with zero values
+	if exprTable, isTable := stmt.Expr.(parser.ExprTable); isTable {
+		if customType, isCustom := v.dataType.(shared.Custom); isCustom {
+			if _, isObject := c.objects[customType.Name]; isObject {
+				// This is an assignment of a table to a custom object variable
+				// We need to handle incomplete object assignments by filling missing fields
+				if err = c.compileExprTableWithZeroValues(exprTable, customType); err != nil {
+					err = fmt.Errorf("failed to compile expression table with zero values: %w", err)
+					return
+				}
+				return nil
+			}
+		}
+	}
+
 	if err = c.compileExpr(stmt.Expr); err != nil {
 		err = fmt.Errorf("failed to parse expression: %w", err)
 		return
@@ -343,6 +374,81 @@ func (c *compiler) compileExprTable(expr parser.ExprTable) (err error) {
 		}
 
 		if i < argsLen-1 {
+			c.sb.WriteRune(',')
+		}
+	}
+	c.sb.WriteRune('}')
+	return nil
+}
+
+func (c *compiler) compileExprTableWithZeroValues(expr parser.ExprTable, objectType shared.Custom) (err error) {
+	obj, ok := c.objects[objectType.Name]
+	if !ok {
+		err = fmt.Errorf("object %q does not exist", objectType.Name)
+		return
+	}
+
+	// Create a map of provided fields for quick lookup
+	providedFields := make(map[string]parser.Expr)
+	for _, pair := range expr.Pairs {
+		if varExpr, isVar := pair.Key.(parser.ExprVariable); isVar {
+			providedFields[varExpr.Name] = pair.Value
+		}
+	}
+
+	// Write the table with all fields - provided fields with their values, missing fields with zero values
+	c.sb.WriteRune('{')
+	fieldCount := len(obj.fields)
+	for i, field := range obj.fields {
+		// Write the field name
+		c.sb.WriteRune('"')
+		c.sb.WriteString(field.Field)
+		c.sb.WriteRune('"')
+		c.sb.WriteRune(':')
+
+		// Check if this field was provided in the assignment
+		if value, exists := providedFields[field.Field]; exists {
+			// Field was provided, use its value
+			// If the value is a table and the field type is a custom object,
+			// we need to handle it with zero values too for nested incomplete objects
+			if tableValue, isTable := value.(parser.ExprTable); isTable {
+				if customType, isCustom := field.Type.(shared.Custom); isCustom {
+					if _, isObject := c.objects[customType.Name]; isObject {
+						// This is an incomplete nested object assignment that needs to be filled with zero values
+						if err = c.compileExprTableWithZeroValues(tableValue, customType); err != nil {
+							err = fmt.Errorf("failed to compile nested table with zero values for field %q: %w", field.Field, err)
+							return
+						}
+					} else {
+						// Not an object, compile normally
+						if err = c.compileExpr(value); err != nil {
+							err = fmt.Errorf("failed to compile value for field %q: %w", field.Field, err)
+							return
+						}
+					}
+				} else {
+					// Not a custom type, compile normally
+					if err = c.compileExpr(value); err != nil {
+						err = fmt.Errorf("failed to compile value for field %q: %w", field.Field, err)
+						return
+					}
+				}
+			} else {
+				// Not a table expression, compile normally
+				if err = c.compileExpr(value); err != nil {
+					err = fmt.Errorf("failed to compile value for field %q: %w", field.Field, err)
+					return
+				}
+			}
+		} else {
+			// Field was not provided, use zero value
+			if err = c.compileDataTypeZeroValue(field.Type); err != nil {
+				err = fmt.Errorf("failed to compile zero value for field %q: %w", field.Field, err)
+				return
+			}
+		}
+
+		if i < fieldCount-1 {
 			c.sb.WriteRune(',')
 		}
 	}

@@ -9,3 +9,21 @@ p1 person
 
 // assign a person variable
 p1 = {name: "Andrew", age: 35}
+
+// declare and assaign a person variable
+p2 person = {name: "Stephen", age: 18}
+
+// assign objects to each other
+p1 = p2
+p1 = {name: "Something"}
+
+// object as a field of another object
+human obj {
+    person person
+}
+
+h1 human = {
+    person: {
+        name: "Andrew"
+    }
+}

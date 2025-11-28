@@ -33,5 +33,10 @@ s3 = s1
 
 p1 = {"name":"","age":0}
 p1 = {"name":"Andrew","age":35}
+p2 = {"name":"Stephen","age":18}
+p1 = p2
+p1 = {"name":"Something","age":0}
+
+h1 = {"person":{"name":"Andrew","age":0}}
 
 ---
