@@ -103,6 +103,11 @@ func (c *compiler) compileExpr(expr parser.Expr) (err error) {
 			err = fmt.Errorf("failed to compile expression list: %w", err)
 			return
 		}
+	case parser.ExprTable:
+		if err = c.compileExprTable(n); err != nil {
+			err = fmt.Errorf("failed to compile expression table: %w", err)
+			return
+		}
 	default:
 		err = fmt.Errorf("expected expr, got: %v", n)
 		return
@@ -176,14 +181,17 @@ func (c *compiler) compileStmtVarDeclare(stmt parser.StmtVarDeclare) (err error)
 	}
 	c.variables[stmt.VariableName] = variable
 
+	// Check if we need to declare a local variable
 	if c.scope != globalScope {
 		c.sb.WriteString(shared.Keyword_Local)
 		c.sb.WriteRune(' ')
 	}
 
+	// Write the variable name
 	c.sb.WriteString(stmt.VariableName)
 	c.sb.WriteString(" = ")
 
+	// Write the expression
 	if stmt.Expr == nil {
 		c.sb.WriteString(variable.dataType.ZeroValue())
 	} else {
@@ -253,5 +261,28 @@ func (c *compiler) compileExprList(expr parser.ExprList) (err error) {
 		return
 	}
 	c.sb.WriteRune(']')
+	return nil
+}
+func (c *compiler) compileExprTable(expr parser.ExprTable) (err error) {
+	c.sb.WriteRune('{')
+	argsLen := len(expr.Pairs)
+	for i, pair := range expr.Pairs {
+		if err = c.compileExpr(pair.Key); err != nil {
+			err = fmt.Errorf("failed to compile key %d: %w", i, err)
+			return
+		}
+
+		c.sb.WriteRune(':')
+
+		if err = c.compileExpr(pair.Value); err != nil {
+			err = fmt.Errorf("failed to compile value %d: %w", i, err)
+			return
+		}
+
+		if i < argsLen-1 {
+			c.sb.WriteRune(',')
+		}
+	}
+	c.sb.WriteRune('}')
 	return nil
 }

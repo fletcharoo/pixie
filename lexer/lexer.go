@@ -25,6 +25,8 @@ const (
 	TokenType_Colon                 // TokenType_Colon represents a : character
 	TokenType_OpenBracket           // TokenType_OpenBracket representes a [ character
 	TokenType_CloseBracket          // TokenType_CloseBracet represents a ] character
+	TokenType_OpenBrace             // TokenType_OpenBrace represents a { character
+	TokenType_CloseBrace            // TokenType_CloseBrace represents a } character
 )
 
 // TokenTypeString maps token type constants to their string representations for debugging and display purposes.
@@ -43,6 +45,8 @@ var (
 		TokenType_Colon:          "Colon",
 		TokenType_OpenBracket:    "OpenBracket",
 		TokenType_CloseBracket:   "CloseBracket",
+		TokenType_OpenBrace:      "OpenBrace",
+		TokenType_CloseBrace:     "CloseBrace",
 	}
 
 	TokenTypeCharactersMap map[rune]Token = map[rune]Token{
@@ -54,6 +58,8 @@ var (
 		':': {Type: TokenType_Colon},
 		'[': {Type: TokenType_OpenBracket},
 		']': {Type: TokenType_CloseBracket},
+		'{': {Type: TokenType_OpenBrace},
+		'}': {Type: TokenType_CloseBrace},
 	}
 )
 
@@ -122,6 +128,17 @@ func (l *Lexer) peekRune() (r rune, err error) {
 	}
 
 	return l.input[l.index], nil
+}
+
+func (l *Lexer) ConsumeToken(expected int) (err error) {
+	tok, err := l.GetToken()
+	if err != nil {
+		return err
+	}
+	if tok.Type != expected {
+		err = fmt.Errorf("unexpected token, wanted %q got %q", TokenTypeString[expected], tok.String())
+	}
+	return nil
 }
 
 // GetToken returns the next token in the input string.

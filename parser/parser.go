@@ -254,6 +254,13 @@ func (p *Parser) parseDataType() (dataType shared.DataType, err error) {
 			return
 		}
 		return dataType, nil
+	case shared.Keyword_Map:
+		dataType, err = p.parseDataTypeMap()
+		if err != nil {
+			err = fmt.Errorf("failed to parse data type map: %w", err)
+			return
+		}
+		return dataType, nil
 	}
 
 	err = fmt.Errorf("unknown type %q", tokLabel.Value)
@@ -294,6 +301,51 @@ func (p *Parser) parseDataTypeList() (dataType shared.List, err error) {
 
 	return shared.List{
 		ListType: subDataType,
+	}, nil
+}
+
+func (p *Parser) parseDataTypeMap() (dataType shared.Map, err error) {
+	// Consume open bracket
+	if err = p.lexer.ConsumeToken(lexer.TokenType_OpenBracket); err != nil {
+		err = fmt.Errorf("failed to consume key open bracket: %w", err)
+		return
+	}
+
+	// Parse key data type
+	keyDataType, err := p.parseDataType()
+	if err != nil {
+		err = fmt.Errorf("failed to parse key data type: %w", err)
+		return
+	}
+
+	// Consume close bracket
+	if err = p.lexer.ConsumeToken(lexer.TokenType_CloseBracket); err != nil {
+		err = fmt.Errorf("failed to consume key close bracket: %w", err)
+		return
+	}
+
+	// Consume open bracket
+	if err = p.lexer.ConsumeToken(lexer.TokenType_OpenBracket); err != nil {
+		err = fmt.Errorf("failed to consume value open bracket: %w", err)
+		return
+	}
+
+	// Parse value data type
+	valueDataType, err := p.parseDataType()
+	if err != nil {
+		err = fmt.Errorf("failed to parse value data type: %w", err)
+		return
+	}
+
+	// Consume close bracket
+	if err = p.lexer.ConsumeToken(lexer.TokenType_CloseBracket); err != nil {
+		err = fmt.Errorf("failed to consume value close bracket: %w", err)
+		return
+	}
+
+	return shared.Map{
+		KeyType:   keyDataType,
+		ValueType: valueDataType,
 	}, nil
 }
 
@@ -355,6 +407,13 @@ func (p *Parser) parseExpr() (expr Expr, err error) {
 		expr, err = p.parseExprList()
 		if err != nil {
 			err = fmt.Errorf("failed to parse list expression: %w", err)
+			return
+		}
+		return expr, nil
+	case lexer.TokenType_OpenBrace:
+		expr, err = p.parseExprTable()
+		if err != nil {
+			err = fmt.Errorf("failed to parse table expression: %w", err)
 			return
 		}
 		return expr, nil
@@ -460,5 +519,76 @@ parseExprListLoop:
 
 	return ExprList{
 		Values: exprs,
+	}, nil
+}
+
+func (p *Parser) parseExprTable() (expr ExprTable, err error) {
+	// Consume open brace
+	if err = p.lexer.ConsumeToken(lexer.TokenType_OpenBrace); err != nil {
+		err = fmt.Errorf("failed to consume open brace token: %w", err)
+		return
+	}
+
+	pairs := make([]KeyValuePair, 0)
+
+	// Parse inside fo table
+	var tokNext lexer.Token
+parseExprMapLoop:
+	for {
+		// Parse key expression
+		var keyExpr Expr
+		keyExpr, err = p.parseExpr()
+		if err != nil {
+			err = fmt.Errorf("failed to parse key expression: %w", err)
+			return
+		}
+
+		// Consume colon
+		if err = p.lexer.ConsumeToken(lexer.TokenType_Colon); err != nil {
+			err = fmt.Errorf("failed to consume colon: %w", err)
+			return
+		}
+
+		// Parse value expression
+		var valueExpr Expr
+		valueExpr, err = p.parseExpr()
+		if err != nil {
+			err = fmt.Errorf("failed to parse value expression: %w", err)
+			return
+		}
+
+		// Append to pairs
+		pairs = append(pairs, KeyValuePair{
+			Key:   keyExpr,
+			Value: valueExpr,
+		})
+
+		tokNext, err = p.lexer.PeekToken()
+		if err != nil {
+			err = fmt.Errorf("failed to peek token: %w", err)
+			return
+		}
+
+		switch tokNext.Type {
+		case lexer.TokenType_CloseBrace:
+			_, err = p.lexer.GetToken()
+			if err != nil {
+				err = fmt.Errorf("failed to get close brace token: %w", err)
+				return
+			}
+			break parseExprMapLoop
+		case lexer.TokenType_Comma:
+			if err = p.lexer.ConsumeToken(lexer.TokenType_Comma); err != nil {
+				err = fmt.Errorf("failed to consume comma token: %w", err)
+				return
+			}
+			continue
+		default:
+			err = fmt.Errorf("unexpected token %q", tokNext.String())
+			return
+		}
+	}
+	return ExprTable{
+		Pairs: pairs,
 	}, nil
 }
