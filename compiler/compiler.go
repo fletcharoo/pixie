@@ -211,9 +211,8 @@ func (c *compiler) compileStmtVarAssign(stmt parser.StmtVarAssign) (err error) {
 		return
 	}
 
-	dataType := stmt.Expr.DataType()
-	if dataType != v.dataType {
-		err = errors.Join(ErrInvalidTypeAssign, fmt.Errorf("variable %q wants %q got %q", stmt.VariableName, v.dataType, dataType))
+	if err = c.checkExpressionValidDataType(v.dataType, stmt.Expr); err != nil {
+		err = errors.Join(ErrInvalidTypeAssign, fmt.Errorf("%s", err.Error())) // for some reason it wouldn't show the second error when I joined it with the err variable
 		return
 	}
 
@@ -284,5 +283,91 @@ func (c *compiler) compileExprTable(expr parser.ExprTable) (err error) {
 		}
 	}
 	c.sb.WriteRune('}')
+	return nil
+}
+
+func (c *compiler) checkExpressionValidDataType(dataType shared.DataType, expr parser.Expr) (err error) {
+	switch d := dataType.(type) {
+	case shared.Number:
+		return c.checkExpressionValidNumber(d, expr)
+	case shared.String:
+		return c.checkExpressionValidString(d, expr)
+	case shared.Boolean:
+		return c.checkExpressionValidBoolean(d, expr)
+	case shared.List:
+		return c.checkExpressionValidList(d, expr)
+	case shared.Map:
+		return c.checkExpressionValidMap(d, expr)
+	}
+
+	err = fmt.Errorf("unknown type: %#v", dataType)
+	return
+}
+
+func (c *compiler) checkExpressionValidNumber(dataType shared.Number, expr parser.Expr) (err error) {
+	switch e := expr.(type) {
+	case parser.ExprNumber:
+		return nil
+	default:
+		return fmt.Errorf("expected %s got %T", dataType.String(), e)
+	}
+}
+
+func (c *compiler) checkExpressionValidString(dataType shared.String, expr parser.Expr) (err error) {
+	switch e := expr.(type) {
+	case parser.ExprString:
+		return nil
+	default:
+		return fmt.Errorf("expected %s got %T", dataType.String(), e)
+	}
+}
+
+func (c *compiler) checkExpressionValidBoolean(dataType shared.Boolean, expr parser.Expr) (err error) {
+	switch e := expr.(type) {
+	case parser.ExprBoolean:
+		return nil
+	default:
+		return fmt.Errorf("expected %s got %T", dataType.String(), e)
+	}
+}
+
+func (c *compiler) checkExpressionValidList(dataType shared.List, expr parser.Expr) (err error) {
+	var exprList parser.ExprList
+	switch e := expr.(type) {
+	case parser.ExprList:
+		exprList = e
+	default:
+		return fmt.Errorf("expected %s got %T", dataType.String(), e)
+	}
+
+	for _, value := range exprList.Values {
+		if err = c.checkExpressionValidDataType(dataType.ListType, value); err != nil {
+			err = fmt.Errorf("failed to check if list type is valid data type: %w", err)
+			return
+		}
+	}
+	return nil
+}
+
+func (c *compiler) checkExpressionValidMap(dataType shared.Map, expr parser.Expr) (err error) {
+	var exprTable parser.ExprTable
+	switch e := expr.(type) {
+	case parser.ExprTable:
+		exprTable = e
+	default:
+		return fmt.Errorf("expected %s got %T", dataType.String(), e)
+	}
+
+	for _, pair := range exprTable.Pairs {
+		if err = c.checkExpressionValidDataType(dataType.KeyType, pair.Key); err != nil {
+			err = fmt.Errorf("failed to check if map key type is valid data type: %w", err)
+			return
+		}
+
+		if err = c.checkExpressionValidDataType(dataType.ValueType, pair.Value); err != nil {
+			err = fmt.Errorf("failed to check if map value type is valid data type: %w", err)
+			return
+		}
+	}
 	return nil
 }

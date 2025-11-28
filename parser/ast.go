@@ -28,7 +28,6 @@ type Stmt interface {
 type Expr interface {
 	Node
 	Expr()
-	DataType() shared.DataType
 }
 
 // Ensures all statements and expressions implement the Node interfaces
@@ -81,46 +80,20 @@ type ExprBlock struct {
 	Value Expr
 }
 
-func (e ExprBlock) DataType() shared.DataType {
-	return e.Value.DataType()
-}
-
 type ExprNumber struct {
 	Value string
-}
-
-func (e ExprNumber) DataType() shared.DataType {
-	return shared.Number{}
 }
 
 type ExprString struct {
 	Value string
 }
 
-func (e ExprString) DataType() shared.DataType {
-	return shared.String{}
-}
-
 type ExprBoolean struct {
 	Value string
 }
 
-func (e ExprBoolean) DataType() shared.DataType {
-	return shared.Boolean{}
-}
-
 type ExprList struct {
 	Values []Expr
-}
-
-func (e ExprList) DataType() shared.DataType {
-	if len(e.Values) == 0 {
-		return shared.List{}
-	}
-
-	return shared.List{
-		ListType: e.Values[0].DataType(),
-	}
 }
 
 type KeyValuePair struct {
@@ -130,15 +103,4 @@ type KeyValuePair struct {
 
 type ExprTable struct {
 	Pairs []KeyValuePair
-}
-
-func (e ExprTable) DataType() shared.DataType {
-	if len(e.Pairs) == 0 {
-		return shared.Map{}
-	}
-
-	return shared.Map{
-		KeyType:   e.Pairs[0].Key.DataType(),
-		ValueType: e.Pairs[0].Value.DataType(),
-	}
 }

@@ -84,6 +84,21 @@ func Test_ListVariable_InvalidTypeAssign(t *testing.T) {
 		_, err = Compile(node)
 		require.ErrorIs(t, err, ErrInvalidTypeAssign)
 	})
+
+	t.Run("list_value_multiple", func(t *testing.T) {
+		pixie := `
+		l list[str] = ["hello", "world"]
+		l = ["hello", 2, 3]
+		`
+
+		l := lexer.New(pixie)
+		p := parser.New(l)
+		node, err := p.Parse()
+		require.NoError(t, err, "failed to parse")
+
+		_, err = Compile(node)
+		require.ErrorIs(t, err, ErrInvalidTypeAssign)
+	})
 }
 
 func Test_MapVariable_InvalidTypeAssign(t *testing.T) {
@@ -91,6 +106,21 @@ func Test_MapVariable_InvalidTypeAssign(t *testing.T) {
 		pixie := `
 		m map[str][num] = {"hello": 1}
 		m = {"something": false}
+		`
+
+		l := lexer.New(pixie)
+		p := parser.New(l)
+		node, err := p.Parse()
+		require.NoError(t, err, "failed to parse")
+
+		_, err = Compile(node)
+		require.ErrorIs(t, err, ErrInvalidTypeAssign)
+	})
+
+	t.Run("multiple_value", func(t *testing.T) {
+		pixie := `
+		m map[str][num] = {"hello": 1}
+		m = {"something": 2, "else": false}
 		`
 
 		l := lexer.New(pixie)
