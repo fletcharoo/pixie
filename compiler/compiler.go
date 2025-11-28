@@ -108,6 +108,11 @@ func (c *compiler) compileExpr(expr parser.Expr) (err error) {
 			err = fmt.Errorf("failed to compile expression table: %w", err)
 			return
 		}
+	case parser.ExprVariable:
+		if err = c.compileExprVariable(n); err != nil {
+			err = fmt.Errorf("failed to compile expression variable: %w", err)
+			return
+		}
 	default:
 		err = fmt.Errorf("expected expr, got: %v", n)
 		return
@@ -211,9 +216,22 @@ func (c *compiler) compileStmtVarAssign(stmt parser.StmtVarAssign) (err error) {
 		return
 	}
 
-	if err = c.checkExpressionValidDataType(v.dataType, stmt.Expr); err != nil {
-		err = errors.Join(ErrInvalidTypeAssign, fmt.Errorf("%s", err.Error())) // for some reason it wouldn't show the second error when I joined it with the err variable
-		return
+	switch e := stmt.Expr.(type) {
+	case parser.ExprVariable:
+		ev, ok := c.variables[e.Name]
+		if !ok {
+			err = fmt.Errorf("variable %q does not exist", e.Name)
+			return
+		}
+		if v.dataType.String() != ev.dataType.String() {
+			err = errors.Join(ErrInvalidTypeAssign, fmt.Errorf("wanted %q got %q", v.dataType.String(), ev.dataType.String()))
+			return
+		}
+	default:
+		if err = c.checkExpressionValidDataType(v.dataType, stmt.Expr); err != nil {
+			err = errors.Join(ErrInvalidTypeAssign, fmt.Errorf("%s", err.Error())) // for some reason it wouldn't show the second error when I joined it with the err variable
+			return
+		}
 	}
 
 	c.sb.WriteString(stmt.VariableName)
@@ -283,6 +301,11 @@ func (c *compiler) compileExprTable(expr parser.ExprTable) (err error) {
 		}
 	}
 	c.sb.WriteRune('}')
+	return nil
+}
+
+func (c *compiler) compileExprVariable(expr parser.ExprVariable) (err error) {
+	c.sb.WriteString(expr.Name)
 	return nil
 }
 

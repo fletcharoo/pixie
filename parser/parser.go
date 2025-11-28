@@ -417,6 +417,13 @@ func (p *Parser) parseExpr() (expr Expr, err error) {
 			return
 		}
 		return expr, nil
+	case lexer.TokenType_Label:
+		expr, err = p.parseExprLabel()
+		if err != nil {
+			err = fmt.Errorf("failed to parse label expression: %w", err)
+			return
+		}
+		return expr, nil
 	}
 
 	err = fmt.Errorf("expected expression, got %q", tok.String())
@@ -474,6 +481,7 @@ func (p *Parser) parseExprList() (expr ExprList, err error) {
 	}
 	if tokOpenBracket.Type != lexer.TokenType_OpenBracket {
 		err = fmt.Errorf("expected open bracket, got %q", tokOpenBracket.String())
+		return
 	}
 
 	// parse the inside expressions
@@ -590,5 +598,22 @@ parseExprMapLoop:
 	}
 	return ExprTable{
 		Pairs: pairs,
+	}, nil
+}
+
+func (p *Parser) parseExprLabel() (expr Expr, err error) {
+	tokLabel, err := p.lexer.GetToken()
+	if err != nil {
+		err = fmt.Errorf("failed to get label token: %w", err)
+		return
+	}
+
+	if len(tokLabel.Value) == 0 {
+		err = fmt.Errorf("label is empty")
+		return
+	}
+
+	return ExprVariable{
+		Name: tokLabel.Value,
 	}, nil
 }

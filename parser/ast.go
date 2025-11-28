@@ -14,6 +14,7 @@ const (
 	NodeType_ExprBoolean
 	NodeType_ExprList
 	NodeType_ExprMap
+	NodeType_ExprVariable
 )
 
 type Node interface {
@@ -41,6 +42,7 @@ func (ExprString) Type() int       { return NodeType_ExprString }
 func (ExprBoolean) Type() int      { return NodeType_ExprBoolean }
 func (ExprList) Type() int         { return NodeType_ExprList }
 func (ExprTable) Type() int        { return NodeType_ExprMap }
+func (ExprVariable) Type() int     { return NodeType_ExprVariable }
 
 // Ensures all statements implement the Stmt interface
 func (StmtBlock) Stmt()        {}
@@ -49,12 +51,13 @@ func (StmtVarDeclare) Stmt()   {}
 func (StmtVarAssign) Stmt()    {}
 
 // Ensures all expressions implement the Expr interface
-func (ExprBlock) Expr()   {}
-func (ExprNumber) Expr()  {}
-func (ExprString) Expr()  {}
-func (ExprBoolean) Expr() {}
-func (ExprList) Expr()    {}
-func (ExprTable) Expr()   {}
+func (ExprBlock) Expr()    {}
+func (ExprNumber) Expr()   {}
+func (ExprString) Expr()   {}
+func (ExprBoolean) Expr()  {}
+func (ExprList) Expr()     {}
+func (ExprTable) Expr()    {}
+func (ExprVariable) Expr() {}
 
 type StmtBlock struct {
 	Stmts []Stmt
@@ -103,4 +106,8 @@ type KeyValuePair struct {
 
 type ExprTable struct {
 	Pairs []KeyValuePair
+}
+
+type ExprVariable struct {
+	Name string
 }

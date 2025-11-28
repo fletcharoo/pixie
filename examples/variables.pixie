@@ -42,3 +42,6 @@ m1 = {"hello": 1}
 
 // declare and assign a map variable
 m2 map[num][bool] = {1: true, 2: false}
+
+// assign variable to another variable
+s3 str = s1
