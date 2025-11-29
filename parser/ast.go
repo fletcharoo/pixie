@@ -16,6 +16,8 @@ const (
 	NodeType_ExprList
 	NodeType_ExprMap
 	NodeType_ExprVariable
+	NodeType_ExprIndex
+	NodeType_ExprPropertyAccess
 )
 
 type Node interface {
@@ -45,6 +47,8 @@ func (ExprBoolean) Type() int      { return NodeType_ExprBoolean }
 func (ExprList) Type() int         { return NodeType_ExprList }
 func (ExprTable) Type() int        { return NodeType_ExprMap }
 func (ExprVariable) Type() int     { return NodeType_ExprVariable }
+func (ExprIndex) Type() int        { return NodeType_ExprIndex }
+func (ExprPropertyAccess) Type() int { return NodeType_ExprPropertyAccess }
 
 // Ensures all statements implement the Stmt interface
 func (StmtBlock) Stmt()        {}
@@ -61,6 +65,8 @@ func (ExprBoolean) Expr()  {}
 func (ExprList) Expr()     {}
 func (ExprTable) Expr()    {}
 func (ExprVariable) Expr() {}
+func (ExprIndex) Expr()    {}
+func (ExprPropertyAccess) Expr() {}
 
 type StmtBlock struct {
 	Stmts []Stmt
@@ -123,4 +129,14 @@ type ExprTable struct {
 
 type ExprVariable struct {
 	Name string
+}
+
+type ExprIndex struct {
+	Left  Expr
+	Index Expr
+}
+
+type ExprPropertyAccess struct {
+	Left   Expr
+	Property string
 }

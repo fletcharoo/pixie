@@ -124,6 +124,16 @@ func (c *compiler) compileExpr(expr parser.Expr) (err error) {
 			err = fmt.Errorf("failed to compile expression variable: %w", err)
 			return
 		}
+	case parser.ExprIndex:
+		if err = c.compileExprIndex(n); err != nil {
+			err = fmt.Errorf("failed to compile expression index: %w", err)
+			return
+		}
+	case parser.ExprPropertyAccess:
+		if err = c.compileExprPropertyAccess(n); err != nil {
+			err = fmt.Errorf("failed to compile expression property access: %w", err)
+			return
+		}
 	default:
 		err = fmt.Errorf("expected expr, got: %v", n)
 		return
@@ -629,5 +639,72 @@ func (c *compiler) compileObjectZeroValue(dataType shared.Custom) (err error) {
 		}
 	}
 	c.sb.WriteRune('}')
+	return nil
+}
+
+func (c *compiler) compileExprIndex(expr parser.ExprIndex) (err error) {
+	// Compile the left side (the container being indexed)
+	if err = c.compileExpr(expr.Left); err != nil {
+		err = fmt.Errorf("failed to compile left side of index: %w", err)
+		return
+	}
+
+	// Check if the left expression is a variable to determine its type for index adjustment
+	// For lists, we need to add 1 to the index since pixie is 0-indexed but Lua is 1-indexed
+	needsIndexAdjustment := false
+
+	// Determine if the container is a list by checking the variable type
+	if varExpr, isVar := expr.Left.(parser.ExprVariable); isVar {
+		if variable, exists := c.variables[varExpr.Name]; exists {
+			// Check if the variable is of list type
+			if _, isList := variable.dataType.(shared.List); isList {
+				needsIndexAdjustment = true
+			}
+		}
+	}
+
+	c.sb.WriteRune('[')
+
+	// If we need index adjustment and the index is a number literal, add 1 to it
+	if needsIndexAdjustment {
+		if _, isNum := expr.Index.(parser.ExprNumber); isNum {
+			// For numeric indices, we add 1 to convert from pixie's 0-indexing to lua's 1-indexing
+			c.sb.WriteString("(")
+			if err = c.compileExpr(expr.Index); err != nil {
+				err = fmt.Errorf("failed to compile index: %w", err)
+				return
+			}
+			c.sb.WriteString(" + 1)")
+		} else {
+			// For non-numeric indices (like variables or expressions), wrap in parentheses and add 1
+			c.sb.WriteString("(")
+			if err = c.compileExpr(expr.Index); err != nil {
+				err = fmt.Errorf("failed to compile index: %w", err)
+				return
+			}
+			c.sb.WriteString(" + 1)")
+		}
+	} else {
+		// For maps and other types, compile the index as-is
+		if err = c.compileExpr(expr.Index); err != nil {
+			err = fmt.Errorf("failed to compile index: %w", err)
+			return
+		}
+	}
+
+	c.sb.WriteRune(']')
+	return nil
+}
+
+func (c *compiler) compileExprPropertyAccess(expr parser.ExprPropertyAccess) (err error) {
+	// Compile the left side (the object being accessed)
+	if err = c.compileExpr(expr.Left); err != nil {
+		err = fmt.Errorf("failed to compile left side of property access: %w", err)
+		return
+	}
+
+	// In Lua, object properties are accessed with dot notation like in Pixie
+	c.sb.WriteRune('.')
+	c.sb.WriteString(expr.Property)
 	return nil
 }

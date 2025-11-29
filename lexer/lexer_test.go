@@ -138,8 +138,8 @@ func TestGetToken(t *testing.T) {
 		"large_integer":             {"123456789", []Token{{Type: TokenType_NumberLiteral, Value: "123456789"}}, false},
 		"zero":                      {"0", []Token{{Type: TokenType_NumberLiteral, Value: "0"}}, false},
 		"float_starting_with_zero":  {"0.5", []Token{{Type: TokenType_NumberLiteral, Value: "0.5"}}, false},
-		"multiple_decimals":         {"3.14.15", nil, true}, // Multiple decimals cause an error after parsing "3.14"
-		"decimal_starting_with_dot": {".5", nil, true},      // This causes an error as dot is not a valid start for any token
+		"multiple_decimals":         {"3.14.15", []Token{{Type: TokenType_NumberLiteral, Value: "3.14"}, {Type: TokenType_Period}, {Type: TokenType_NumberLiteral, Value: "15"}}, false}, // "3.14" is parsed as a number, then "." as a period token, then "15" as a number
+		"decimal_starting_with_dot": {".5", []Token{{Type: TokenType_Period}, {Type: TokenType_NumberLiteral, Value: "5"}}, false},      // "." is parsed as a period token, then "5" as a number - this will be handled as an error at the parser level
 
 		// Test string literals
 		"empty_string":              {`""`, []Token{{Type: TokenType_StringLiteral, Value: ""}}, false},

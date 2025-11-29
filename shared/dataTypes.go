@@ -20,7 +20,7 @@ func (s String) String() string  { return Keyword_String }
 func (b Boolean) String() string { return Keyword_Boolean }
 func (l List) String() string    { return fmt.Sprintf("list[%s]", l.ListType.String()) }
 func (m Map) String() string {
-	return fmt.Sprintf("map[%s][%s]", m.KeyType.RootType(), m.ValueType.String())
+	return fmt.Sprintf("map[%s:%s]", m.KeyType.RootType(), m.ValueType.String())
 }
 func (o Object) String() string {
 	var sb strings.Builder
@@ -44,7 +44,7 @@ func (s String) RootType() string  { return Keyword_String }
 func (b Boolean) RootType() string { return Keyword_Boolean }
 func (l List) RootType() string    { return fmt.Sprintf("list[%s]", l.ListType.RootType()) }
 func (m Map) RootType() string {
-	return fmt.Sprintf("map[%s][%s]", m.KeyType.RootType(), m.ValueType.RootType())
+	return fmt.Sprintf("map[%s:%s]", m.KeyType.RootType(), m.ValueType.RootType())
 }
 func (o Object) RootType() string {
 	var sb strings.Builder

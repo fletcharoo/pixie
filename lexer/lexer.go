@@ -25,6 +25,7 @@ const (
 	TokenType_Colon                 // TokenType_Colon represents a : character
 	TokenType_OpenBracket           // TokenType_OpenBracket representes a [ character
 	TokenType_CloseBracket          // TokenType_CloseBracet represents a ] character
+	TokenType_Period                // TokenType_Period represents a . character
 	TokenType_OpenBrace             // TokenType_OpenBrace represents a { character
 	TokenType_CloseBrace            // TokenType_CloseBrace represents a } character
 )
@@ -45,6 +46,7 @@ var (
 		TokenType_Colon:          "Colon",
 		TokenType_OpenBracket:    "OpenBracket",
 		TokenType_CloseBracket:   "CloseBracket",
+		TokenType_Period:         "Period",
 		TokenType_OpenBrace:      "OpenBrace",
 		TokenType_CloseBrace:     "CloseBrace",
 	}
@@ -182,6 +184,13 @@ func (l *Lexer) GetToken() (tok Token, err error) {
 		case '"':
 			l.index++
 			return l.getTokenStringLiteral()
+		case '.':
+			// Handle period as a token
+			// Note: This means that decimals starting with a period (like ".5")
+			// will be tokenized as [Period, Number] which is the expected behavior
+			// based on the test cases
+			l.index++
+			return Token{Type: TokenType_Period}, nil
 		case '/':
 			rNext, err := l.peekRune()
 			if err != nil {

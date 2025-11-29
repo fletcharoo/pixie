@@ -1,0 +1,26 @@
+// indexing a list
+l list[num] = [1, 2, 3, 4, 5]
+print(l[3])
+
+// indexing an object
+person obj {
+    name str
+}
+
+// indexing a map
+m map[str:num] = {
+    "one": 1,
+    "two": 2
+}
+
+print(m["one"])
+
+p person = {
+    name: "Andrew"
+}
+
+print(p.name)
+
+// multiple indexes
+lmp list[map[str:person]] = [{"person1": {name: "Andrew"}}]
+print(lmp[0]["person1"].name)

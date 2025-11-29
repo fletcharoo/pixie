@@ -104,7 +104,7 @@ func Test_ListVariable_InvalidTypeAssign(t *testing.T) {
 func Test_MapVariable_InvalidTypeAssign(t *testing.T) {
 	t.Run("single_value", func(t *testing.T) {
 		pixie := `
-		m map[str][num] = {"hello": 1}
+		m map[str:num] = {"hello": 1}
 		m = {"something": false}
 		`
 
@@ -119,7 +119,7 @@ func Test_MapVariable_InvalidTypeAssign(t *testing.T) {
 
 	t.Run("multiple_value", func(t *testing.T) {
 		pixie := `
-		m map[str][num] = {"hello": 1}
+		m map[str:num] = {"hello": 1}
 		m = {"something": 2, "else": false}
 		`
 

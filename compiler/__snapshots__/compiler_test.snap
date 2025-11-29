@@ -27,6 +27,9 @@ m1 = {"hello":1}
 m2 = {1:true,2:false}
 s3 = s1
 
+m3 = {"person1":{"name":"Andrew"}}
+print(m3)
+
 ---
 
 [Test_CompileExamples/custom_objects.pixie - 1]
@@ -38,5 +41,18 @@ p1 = p2
 p1 = {"name":"Something","age":0}
 
 h1 = {"person":{"name":"Andrew","age":0}}
+
+---
+
+[Test_CompileExamples/indexing.pixie - 1]
+l = [1,2,3,4,5]
+print(l[(3 + 1)])
+
+m = {"one":1,"two":2}
+print(m["one"])
+p = {"name":"Andrew"}
+print(p.name)
+lmp = [{"person1":{"name":"Andrew"}}]
+print(lmp[(0 + 1)]["person1"].name)
 
 ---

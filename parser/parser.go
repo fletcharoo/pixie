@@ -403,7 +403,7 @@ func (p *Parser) parseDataTypeList() (dataType shared.List, err error) {
 func (p *Parser) parseDataTypeMap() (dataType shared.Map, err error) {
 	// Consume open bracket
 	if err = p.lexer.ConsumeToken(lexer.TokenType_OpenBracket); err != nil {
-		err = fmt.Errorf("failed to consume key open bracket: %w", err)
+		err = fmt.Errorf("failed to consume open bracket: %w", err)
 		return
 	}
 
@@ -414,15 +414,9 @@ func (p *Parser) parseDataTypeMap() (dataType shared.Map, err error) {
 		return
 	}
 
-	// Consume close bracket
-	if err = p.lexer.ConsumeToken(lexer.TokenType_CloseBracket); err != nil {
-		err = fmt.Errorf("failed to consume key close bracket: %w", err)
-		return
-	}
-
-	// Consume open bracket
-	if err = p.lexer.ConsumeToken(lexer.TokenType_OpenBracket); err != nil {
-		err = fmt.Errorf("failed to consume value open bracket: %w", err)
+	// Consume colon separator
+	if err = p.lexer.ConsumeToken(lexer.TokenType_Colon); err != nil {
+		err = fmt.Errorf("failed to consume colon separator: %w", err)
 		return
 	}
 
@@ -435,7 +429,7 @@ func (p *Parser) parseDataTypeMap() (dataType shared.Map, err error) {
 
 	// Consume close bracket
 	if err = p.lexer.ConsumeToken(lexer.TokenType_CloseBracket); err != nil {
-		err = fmt.Errorf("failed to consume value close bracket: %w", err)
+		err = fmt.Errorf("failed to consume close bracket: %w", err)
 		return
 	}
 
@@ -471,6 +465,80 @@ func (p *Parser) parseStmtVarAssign(tokLabel lexer.Token) (stmt StmtVarAssign, e
 }
 
 func (p *Parser) parseExpr() (expr Expr, err error) {
+	// First parse the base expression (without indexing)
+	expr, err = p.parseExprBase()
+	if err != nil {
+		return expr, err
+	}
+
+	// Then handle any indexing operations
+	for {
+		tok, err := p.lexer.PeekToken()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return expr, nil
+			}
+			return expr, fmt.Errorf("failed to peek token: %w", err)
+		}
+
+		switch tok.Type {
+		case lexer.TokenType_OpenBracket:
+			// Handle bracket indexing [index]
+			_, err = p.lexer.GetToken() // consume '['
+			if err != nil {
+				return expr, fmt.Errorf("failed to consume open bracket token: %w", err)
+			}
+
+			indexExpr, err := p.parseExpr()
+			if err != nil {
+				return expr, fmt.Errorf("failed to parse index expression: %w", err)
+			}
+
+			tokCloseBracket, err := p.lexer.PeekToken()
+			if err != nil {
+				return expr, fmt.Errorf("failed to peek close bracket token: %w", err)
+			}
+
+			if tokCloseBracket.Type != lexer.TokenType_CloseBracket {
+				return expr, fmt.Errorf("expected ']', got %q", tokCloseBracket.String())
+			}
+
+			_, err = p.lexer.GetToken() // consume ']'
+			if err != nil {
+				return expr, fmt.Errorf("failed to consume close bracket token: %w", err)
+			}
+
+			expr = ExprIndex{
+				Left:  expr,
+				Index: indexExpr,
+			}
+		case lexer.TokenType_Period:
+			// Handle property access .property
+			_, err = p.lexer.GetToken() // consume '.'
+			if err != nil {
+				return expr, fmt.Errorf("failed to consume period token: %w", err)
+			}
+
+			tokLabel, err := p.lexer.GetToken()
+			if err != nil {
+				return expr, fmt.Errorf("failed to get property label token: %w", err)
+			}
+
+			if tokLabel.Type != lexer.TokenType_Label {
+				return expr, fmt.Errorf("expected label after '.', got %q", tokLabel.String())
+			}
+
+			expr = ExprPropertyAccess{
+				Left:     expr,
+				Property: tokLabel.Value,
+			}
+		default:
+			return expr, nil
+		}
+	}
+}
+
+func (p *Parser) parseExprBase() (expr Expr, err error) {
 	tok, err := p.lexer.PeekToken()
 	if err != nil {
 		err = fmt.Errorf("failed to peek token: %w", err)

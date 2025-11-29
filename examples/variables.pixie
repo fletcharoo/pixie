@@ -35,13 +35,24 @@ l1 = ["hello", "world"]
 l2 list[str] = ["something", "else"]
 
 // declare a map variable
-m1 map[str][num]
+m1 map[str:num]
 
 // assign a map variable
 m1 = {"hello": 1}
 
 // declare and assign a map variable
-m2 map[num][bool] = {1: true, 2: false}
+m2 map[num:bool] = {1: true, 2: false}
 
 // assign variable to another variable
 s3 str = s1
+
+person obj {
+    name str
+}
+
+m3 map[str:person] = {
+    "person1": {
+        name: "Andrew"
+    }
+}
+print(m3)
