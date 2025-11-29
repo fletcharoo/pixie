@@ -17,10 +17,13 @@ const (
 	TokenType_NumberLiteral         // TokenType_NumberLiteral represents a numeric value token
 	TokenType_StringLiteral         // TokenType_StringLiteral represents a string value token
 	TokenType_BooleanLiteral        // TokenType_BooleanLiteral represents a boolean value token (true/false)
+	TokenType_Plus                  // TokenType_Plus represents a + character
+	TokenType_Minus                 // TokenType_Minus represents a - character
+	TokenType_Asterisk              // TokenType_Asterisk represents a * character
+	TokenType_ForwardSlash          // TokenType_ForwardSlash represents a / character
 	TokenType_OpenParan             // TokenType_OpenParan represents a ( character
 	TokenType_CloseParan            // TokenType_CloseParan represents a ) character
 	TokenType_Comma                 // TokenType_Comma represents a , character
-	TokenType_ForwardSlash          // TokenType_ForwardSlash represents a / character
 	TokenType_Equal                 // TokenType_Equal represents a = character
 	TokenType_Colon                 // TokenType_Colon represents a : character
 	TokenType_OpenBracket           // TokenType_OpenBracket representes a [ character
@@ -38,10 +41,13 @@ var (
 		TokenType_NumberLiteral:  "NumberLiteral",
 		TokenType_StringLiteral:  "StringLiteral",
 		TokenType_BooleanLiteral: "BooleanLiteral",
+		TokenType_Plus:           "Plus",
+		TokenType_Minus:          "Minus",
+		TokenType_Asterisk:       "Asterisk",
+		TokenType_ForwardSlash:   "ForwardSlash",
 		TokenType_OpenParan:      "OpenParan",
 		TokenType_CloseParan:     "CloseParan",
 		TokenType_Comma:          "Comma",
-		TokenType_ForwardSlash:   "ForwardSlash",
 		TokenType_Equal:          "Equal",
 		TokenType_Colon:          "Colon",
 		TokenType_OpenBracket:    "OpenBracket",
@@ -55,6 +61,9 @@ var (
 		'(': {Type: TokenType_OpenParan},
 		')': {Type: TokenType_CloseParan},
 		',': {Type: TokenType_Comma},
+		'+': {Type: TokenType_Plus},
+		'-': {Type: TokenType_Minus},
+		'*': {Type: TokenType_Asterisk},
 		'/': {Type: TokenType_ForwardSlash},
 		'=': {Type: TokenType_Equal},
 		':': {Type: TokenType_Colon},
@@ -192,13 +201,22 @@ func (l *Lexer) GetToken() (tok Token, err error) {
 			l.index++
 			return Token{Type: TokenType_Period}, nil
 		case '/':
-			rNext, err := l.peekRune()
-			if err != nil {
-				return tok, err
+			// Handle comments first: check if next character is also / to form a comment
+			nextIndex := l.index + 1
+			if nextIndex >= len(l.input) {
+				// No next character, so just return the forward slash as a token
+				l.index++
+				return Token{Type: TokenType_ForwardSlash}, nil
 			}
-			if rNext == '/' {
+			if l.input[nextIndex] == '/' {
+				// This is a comment (//), skip both characters and the comment content
+				l.index += 2 // skip both '/'
 				l.skipComments()
 				continue
+			} else {
+				// This is a division operator, not a comment
+				l.index++
+				return Token{Type: TokenType_ForwardSlash}, nil
 			}
 		}
 

@@ -3,6 +3,7 @@ package compiler
 import (
 	"errors"
 	"fmt"
+	"pixie/lexer"
 	"pixie/parser"
 	"pixie/shared"
 	"strings"
@@ -132,6 +133,11 @@ func (c *compiler) compileExpr(expr parser.Expr) (err error) {
 	case parser.ExprPropertyAccess:
 		if err = c.compileExprPropertyAccess(n); err != nil {
 			err = fmt.Errorf("failed to compile expression property access: %w", err)
+			return
+		}
+	case parser.ExprBinary:
+		if err = c.compileExprBinary(n); err != nil {
+			err = fmt.Errorf("failed to compile expression binary: %w", err)
 			return
 		}
 	default:
@@ -495,8 +501,46 @@ func (c *compiler) checkExpressionValidNumber(dataType shared.Number, expr parse
 	switch e := expr.(type) {
 	case parser.ExprNumber:
 		return nil
+	case parser.ExprBinary:
+		// Check if both operands are numbers or numeric expressions
+		if err = c.checkExpressionValidNumberForBinary(e.Left); err != nil {
+			return err
+		}
+		if err = c.checkExpressionValidNumberForBinary(e.Right); err != nil {
+			return err
+		}
+		return nil
 	default:
 		return fmt.Errorf("expected %s got %T", dataType.String(), e)
+	}
+}
+
+// checkExpressionValidNumberForBinary is a helper function to check if an expression
+// in a binary operation is valid for numeric operations (numbers or other binary expressions)
+func (c *compiler) checkExpressionValidNumberForBinary(expr parser.Expr) (err error) {
+	switch e := expr.(type) {
+	case parser.ExprNumber:
+		return nil
+	case parser.ExprBinary:
+		// Recursively check the operands of nested binary expressions
+		if err = c.checkExpressionValidNumberForBinary(e.Left); err != nil {
+			return err
+		}
+		if err = c.checkExpressionValidNumberForBinary(e.Right); err != nil {
+			return err
+		}
+		return nil
+	case parser.ExprVariable:
+		// Check if the variable is a number
+		if varInfo, exists := c.variables[e.Name]; exists {
+			_, isNumber := varInfo.dataType.(shared.Number)
+			if isNumber {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected number, got variable of different type")
+	default:
+		return fmt.Errorf("expected number, got %T", e)
 	}
 }
 
@@ -504,8 +548,54 @@ func (c *compiler) checkExpressionValidString(dataType shared.String, expr parse
 	switch e := expr.(type) {
 	case parser.ExprString:
 		return nil
+	case parser.ExprBinary:
+		// For string assignments, only allow + operations (concatenation) where at least one operand is a string
+		if e.Operator != lexer.TokenType_Plus {
+			return fmt.Errorf("expected %s got binary operation with operator %v", dataType.String(), e.Operator)
+		}
+		// Check if both operands are valid for strings (string, variable of string type, or another valid string binary expression)
+		if err = c.checkExpressionValidStringForBinary(e.Left); err != nil {
+			return err
+		}
+		if err = c.checkExpressionValidStringForBinary(e.Right); err != nil {
+			return err
+		}
+		return nil
 	default:
 		return fmt.Errorf("expected %s got %T", dataType.String(), e)
+	}
+}
+
+// checkExpressionValidStringForBinary is a helper function to check if an expression
+// in a binary operation is valid for string operations (strings or other string binary expressions)
+func (c *compiler) checkExpressionValidStringForBinary(expr parser.Expr) (err error) {
+	switch e := expr.(type) {
+	case parser.ExprString:
+		return nil
+	case parser.ExprBinary:
+		// For nested binary expressions, only allow + (concatenation)
+		if e.Operator != lexer.TokenType_Plus {
+			return fmt.Errorf("expected string operation, got operator %v", e.Operator)
+		}
+		// Recursively check the operands of nested binary expressions
+		if err = c.checkExpressionValidStringForBinary(e.Left); err != nil {
+			return err
+		}
+		if err = c.checkExpressionValidStringForBinary(e.Right); err != nil {
+			return err
+		}
+		return nil
+	case parser.ExprVariable:
+		// Check if the variable is a string
+		if varInfo, exists := c.variables[e.Name]; exists {
+			_, isString := varInfo.dataType.(shared.String)
+			if isString {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected string, got variable of different type")
+	default:
+		return fmt.Errorf("expected string, got %T", e)
 	}
 }
 
@@ -707,4 +797,63 @@ func (c *compiler) compileExprPropertyAccess(expr parser.ExprPropertyAccess) (er
 	c.sb.WriteRune('.')
 	c.sb.WriteString(expr.Property)
 	return nil
+}
+
+func (c *compiler) compileExprBinary(expr parser.ExprBinary) (err error) {
+	// Compile the left operand
+	if err = c.compileExpr(expr.Left); err != nil {
+		err = fmt.Errorf("failed to compile left side of binary expression: %w", err)
+		return
+	}
+
+	// Add space, operator, space
+	c.sb.WriteRune(' ')
+
+	// Map operator tokens to Lua operators
+	switch expr.Operator {
+	case lexer.TokenType_Plus:
+		// For string concatenation, Lua uses .. instead of +
+		// Check if either operand is a string
+		if c.isStringExpression(expr.Left) || c.isStringExpression(expr.Right) {
+			c.sb.WriteString("..")
+		} else {
+			c.sb.WriteString("+")
+		}
+	case lexer.TokenType_Minus:
+		c.sb.WriteString("-")
+	case lexer.TokenType_Asterisk:
+		c.sb.WriteString("*")
+	case lexer.TokenType_ForwardSlash:
+		c.sb.WriteString("/")
+	default:
+		err = fmt.Errorf("unknown binary operator: %v", expr.Operator)
+		return
+	}
+
+	c.sb.WriteRune(' ')
+
+	// Compile the right operand
+	if err = c.compileExpr(expr.Right); err != nil {
+		err = fmt.Errorf("failed to compile right side of binary expression: %w", err)
+		return
+	}
+
+	return nil
+}
+
+// Helper function to check if an expression is a string literal
+func (c *compiler) isStringExpression(expr parser.Expr) bool {
+	switch e := expr.(type) {
+	case parser.ExprString:
+		return true
+	case parser.ExprVariable:
+		// Check if the variable is of string type
+		if varInfo, exists := c.variables[e.Name]; exists {
+			_, isString := varInfo.dataType.(shared.String)
+			return isString
+		}
+		return false
+	default:
+		return false
+	}
 }

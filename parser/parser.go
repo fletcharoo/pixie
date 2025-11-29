@@ -465,8 +465,8 @@ func (p *Parser) parseStmtVarAssign(tokLabel lexer.Token) (stmt StmtVarAssign, e
 }
 
 func (p *Parser) parseExpr() (expr Expr, err error) {
-	// First parse the base expression (without indexing)
-	expr, err = p.parseExprBase()
+	// Parse binary expression with precedence
+	expr, err = p.parseExprWithPrecedence(0)
 	if err != nil {
 		return expr, err
 	}
@@ -535,6 +535,65 @@ func (p *Parser) parseExpr() (expr Expr, err error) {
 		default:
 			return expr, nil
 		}
+	}
+}
+
+// Operator precedence levels
+const (
+	precedenceLowest = iota
+	precedenceSum    // +, -
+	precedenceProduct // *, /
+)
+
+func (p *Parser) parseExprWithPrecedence(precedence int) (expr Expr, err error) {
+	expr, err = p.parseExprBase()
+	if err != nil {
+		return
+	}
+
+	for {
+		tok, err := p.lexer.PeekToken()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return expr, nil
+			}
+			return expr, fmt.Errorf("failed to peek token: %w", err)
+		}
+
+		nextPrecedence := p.getPrecedence(tok.Type)
+		if nextPrecedence <= precedence {
+			break
+		}
+
+		operator := tok.Type
+		_, err = p.lexer.GetToken() // consume the operator
+		if err != nil {
+			return expr, fmt.Errorf("failed to consume operator token: %w", err)
+		}
+
+		right, err := p.parseExprWithPrecedence(nextPrecedence)
+		if err != nil {
+			return expr, fmt.Errorf("failed to parse right side of operator: %w", err)
+		}
+
+		expr = ExprBinary{
+			Left:     expr,
+			Operator: operator,
+			Right:    right,
+		}
+	}
+
+	return expr, nil
+}
+
+func (p *Parser) getPrecedence(tokenType int) int {
+	switch tokenType {
+	case lexer.TokenType_Plus, lexer.TokenType_Minus:
+		return precedenceSum
+	case lexer.TokenType_Asterisk, lexer.TokenType_ForwardSlash:
+		return precedenceProduct
+	default:
+		return precedenceLowest
 	}
 }
 

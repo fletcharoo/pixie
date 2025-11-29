@@ -1,0 +1,19 @@
+// Comprehensive test for arithmetic operations
+a num = 10
+b num = 3
+
+// Test all four operations
+add_result num = a + b
+sub_result num = a - b
+mul_result num = a * b
+div_result num = a / b
+
+// Test precedence: multiplication and division before addition and subtraction
+precedence_test1 num = a + b * 2
+precedence_test2 num = a * 2 + b
+precedence_test3 num = a - b / 3
+
+// Test string concatenation
+str1 str = "Hello"
+str2 str = "World"
+concat_result str = str1 + " " + str2

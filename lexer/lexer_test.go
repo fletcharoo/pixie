@@ -424,14 +424,19 @@ func TestEdgeCasesAndUnicode(t *testing.T) {
 	})
 
 	t.Run("zero_and_negative_concept", func(t *testing.T) {
-		lexer := New("0 -5") // Note: the - is an invalid rune, so it would be 0, then an error
+		lexer := New("0 - 5") // Now the - is a valid operator token
 
 		token1, err := lexer.GetToken()
 		assert.NoError(t, err)
 		assert.Equal(t, Token{Type: TokenType_NumberLiteral, Value: "0"}, token1)
 
-		_, err = lexer.GetToken()
-		assert.Error(t, err) // Should error on the minus sign
+		token2, err := lexer.GetToken()
+		assert.NoError(t, err)
+		assert.Equal(t, Token{Type: TokenType_Minus}, token2)
+
+		token3, err := lexer.GetToken()
+		assert.NoError(t, err)
+		assert.Equal(t, Token{Type: TokenType_NumberLiteral, Value: "5"}, token3)
 	})
 
 	t.Run("consecutive_strings", func(t *testing.T) {

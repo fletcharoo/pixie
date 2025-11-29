@@ -56,3 +56,19 @@ lmp = [{"person1":{"name":"Andrew"}}]
 print(lmp[(0 + 1)]["person1"].name)
 
 ---
+
+[Test_CompileExamples/arithmetic.pixie - 1]
+a = 10
+b = 3
+add_result = a + b
+sub_result = a - b
+mul_result = a * b
+div_result = a / b
+precedence_test1 = a + b * 2
+precedence_test2 = a * 2 + b
+precedence_test3 = a - b / 3
+str1 = "Hello"
+str2 = "World"
+concat_result = str1 .. " " .. str2
+
+---
