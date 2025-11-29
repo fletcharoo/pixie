@@ -31,6 +31,12 @@ const (
 	TokenType_Period                // TokenType_Period represents a . character
 	TokenType_OpenBrace             // TokenType_OpenBrace represents a { character
 	TokenType_CloseBrace            // TokenType_CloseBrace represents a } character
+	TokenType_EqualEqual            // TokenType_EqualEqual represents a == character
+	TokenType_BangEqual             // TokenType_BangEqual represents a != character
+	TokenType_GreaterThan           // TokenType_GreaterThan represents a > character
+	TokenType_GreaterThanEqual      // TokenType_GreaterThanEqual represents a >= character
+	TokenType_LessThan              // TokenType_LessThan represents a < character
+	TokenType_LessThanEqual         // TokenType_LessThanEqual represents a <= character
 )
 
 // TokenTypeString maps token type constants to their string representations for debugging and display purposes.
@@ -55,6 +61,12 @@ var (
 		TokenType_Period:         "Period",
 		TokenType_OpenBrace:      "OpenBrace",
 		TokenType_CloseBrace:     "CloseBrace",
+		TokenType_EqualEqual:     "EqualEqual",
+		TokenType_BangEqual:      "BangEqual",
+		TokenType_GreaterThan:    "GreaterThan",
+		TokenType_GreaterThanEqual: "GreaterThanEqual",
+		TokenType_LessThan:       "LessThan",
+		TokenType_LessThanEqual:  "LessThanEqual",
 	}
 
 	TokenTypeCharactersMap map[rune]Token = map[rune]Token{
@@ -200,6 +212,46 @@ func (l *Lexer) GetToken() (tok Token, err error) {
 			// based on the test cases
 			l.index++
 			return Token{Type: TokenType_Period}, nil
+		case '=':
+			// Handle == operator
+			nextIndex := l.index + 1
+			if nextIndex < len(l.input) && l.input[nextIndex] == '=' {
+				l.index += 2
+				return Token{Type: TokenType_EqualEqual}, nil
+			}
+			// Single = is already handled in TokenTypeCharactersMap
+			l.index++
+			return Token{Type: TokenType_Equal}, nil
+		case '!':
+			// Handle != operator
+			nextIndex := l.index + 1
+			if nextIndex < len(l.input) && l.input[nextIndex] == '=' {
+				l.index += 2
+				return Token{Type: TokenType_BangEqual}, nil
+			}
+			// Handle as invalid character for now (could be extended for unary not)
+			err = fmt.Errorf("%w: %s", errInvalidRune, string(r))
+			return
+		case '<':
+			// Handle <= operator
+			nextIndex := l.index + 1
+			if nextIndex < len(l.input) && l.input[nextIndex] == '=' {
+				l.index += 2
+				return Token{Type: TokenType_LessThanEqual}, nil
+			}
+			// Single < is handled here
+			l.index++
+			return Token{Type: TokenType_LessThan}, nil
+		case '>':
+			// Handle >= operator
+			nextIndex := l.index + 1
+			if nextIndex < len(l.input) && l.input[nextIndex] == '=' {
+				l.index += 2
+				return Token{Type: TokenType_GreaterThanEqual}, nil
+			}
+			// Single > is handled here
+			l.index++
+			return Token{Type: TokenType_GreaterThan}, nil
 		case '/':
 			// Handle comments first: check if next character is also / to form a comment
 			nextIndex := l.index + 1

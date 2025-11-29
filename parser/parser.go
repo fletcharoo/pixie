@@ -541,8 +541,9 @@ func (p *Parser) parseExpr() (expr Expr, err error) {
 // Operator precedence levels
 const (
 	precedenceLowest = iota
-	precedenceSum    // +, -
-	precedenceProduct // *, /
+	precedenceComparison // ==, !=, <, <=, >, >=
+	precedenceSum        // +, -
+	precedenceProduct    // *, /
 )
 
 func (p *Parser) parseExprWithPrecedence(precedence int) (expr Expr, err error) {
@@ -588,6 +589,9 @@ func (p *Parser) parseExprWithPrecedence(precedence int) (expr Expr, err error) 
 
 func (p *Parser) getPrecedence(tokenType int) int {
 	switch tokenType {
+	case lexer.TokenType_EqualEqual, lexer.TokenType_BangEqual, lexer.TokenType_LessThan,
+		 lexer.TokenType_LessThanEqual, lexer.TokenType_GreaterThan, lexer.TokenType_GreaterThanEqual:
+		return precedenceComparison
 	case lexer.TokenType_Plus, lexer.TokenType_Minus:
 		return precedenceSum
 	case lexer.TokenType_Asterisk, lexer.TokenType_ForwardSlash:
@@ -626,6 +630,28 @@ func (p *Parser) parseExprBase() (expr Expr, err error) {
 			return
 		}
 		return expr, nil
+	case lexer.TokenType_OpenParan: // Handle parentheses for grouping
+		_, err = p.lexer.GetToken() // consume the opening parenthesis
+		if err != nil {
+			err = fmt.Errorf("failed to consume open parenthesis: %w", err)
+			return
+		}
+
+		// Parse the expression inside the parentheses
+		expr, err = p.parseExpr()
+		if err != nil {
+			err = fmt.Errorf("failed to parse expression in parentheses: %w", err)
+			return
+		}
+
+		// Consume the closing parenthesis
+		if err = p.lexer.ConsumeToken(lexer.TokenType_CloseParan); err != nil {
+			err = fmt.Errorf("failed to consume close parenthesis: %w", err)
+			return
+		}
+
+		// Return as an expression block
+		return ExprBlock{Value: expr}, nil
 	case lexer.TokenType_OpenBracket:
 		expr, err = p.parseExprList()
 		if err != nil {

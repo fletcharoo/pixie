@@ -72,3 +72,59 @@ str2 = "World"
 concat_result = str1 .. " " .. str2
 
 ---
+
+[Test_CompileExamples/relational_operators.pixie - 1]
+x = 5
+y = 10
+result = false
+result = x == y
+print(result)
+result = x == 5
+print(result)
+result = x ~= y
+print(result)
+result = x ~= 5
+print(result)
+result = x > y
+print(result)
+result = y > x
+print(result)
+result = x > 5
+print(result)
+result = x >= y
+print(result)
+result = y >= x
+print(result)
+result = x >= 5
+print(result)
+result = x < y
+print(result)
+result = y < x
+print(result)
+result = x < 5
+print(result)
+result = x <= y
+print(result)
+result = y <= x
+print(result)
+result = x <= 5
+print(result)
+s1 = "hello"
+s2 = "world"
+strResult = false
+strResult = s1 == s2
+print(strResult)
+strResult = s1 ~= s2
+print(strResult)
+b1 = true
+b2 = false
+boolResult = false
+boolResult = b1 == b2
+print(boolResult)
+boolResult = b1 ~= b2
+print(boolResult)
+z = 3
+comboResult = z < x
+print(comboResult)
+
+---

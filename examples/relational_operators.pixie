@@ -1,0 +1,85 @@
+// Test relational operators in pixie
+x num = 5
+y num = 10
+result bool
+
+// Test equality
+result = x == y
+print(result)  // Should print false
+
+result = x == 5
+print(result)  // Should print true
+
+// Test inequality
+result = x != y
+print(result)  // Should print true
+
+result = x != 5
+print(result)  // Should print false
+
+// Test greater than
+result = x > y
+print(result)  // Should print false
+
+result = y > x
+print(result)  // Should print true
+
+result = x > 5
+print(result)  // Should print false
+
+// Test greater than or equal
+result = x >= y
+print(result)  // Should print false
+
+result = y >= x
+print(result)  // Should print true
+
+result = x >= 5
+print(result)  // Should print true
+
+// Test less than
+result = x < y
+print(result)  // Should print true
+
+result = y < x
+print(result)  // Should print false
+
+result = x < 5
+print(result)  // Should print false
+
+// Test less than or equal
+result = x <= y
+print(result)  // Should print true
+
+result = y <= x
+print(result)  // Should print false
+
+result = x <= 5
+print(result)  // Should print true
+
+// Test with string comparisons (if supported)
+s1 str = "hello"
+s2 str = "world"
+strResult bool
+
+strResult = s1 == s2
+print(strResult)  // Should print false
+
+strResult = s1 != s2
+print(strResult)  // Should print true
+
+// Test with boolean comparisons
+b1 bool = true
+b2 bool = false
+boolResult bool
+
+boolResult = b1 == b2
+print(boolResult)  // Should print false
+
+boolResult = b1 != b2
+print(boolResult)  // Should print true
+
+// Test with another number
+z num = 3
+comboResult bool = z < x
+print(comboResult)  // Should print true

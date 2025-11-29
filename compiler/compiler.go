@@ -502,14 +502,26 @@ func (c *compiler) checkExpressionValidNumber(dataType shared.Number, expr parse
 	case parser.ExprNumber:
 		return nil
 	case parser.ExprBinary:
-		// Check if both operands are numbers or numeric expressions
-		if err = c.checkExpressionValidNumberForBinary(e.Left); err != nil {
-			return err
+		// Check if this is a relational operation (returns boolean) or arithmetic operation (returns number)
+		if c.isRelationalOperator(e.Operator) {
+			// For relational operators, check if both operands are valid for comparison
+			if err = c.checkExpressionValidForComparison(e.Left); err != nil {
+				return err
+			}
+			if err = c.checkExpressionValidForComparison(e.Right); err != nil {
+				return err
+			}
+			return nil
+		} else {
+			// Check if both operands are numbers or numeric expressions
+			if err = c.checkExpressionValidNumberForBinary(e.Left); err != nil {
+				return err
+			}
+			if err = c.checkExpressionValidNumberForBinary(e.Right); err != nil {
+				return err
+			}
+			return nil
 		}
-		if err = c.checkExpressionValidNumberForBinary(e.Right); err != nil {
-			return err
-		}
-		return nil
 	default:
 		return fmt.Errorf("expected %s got %T", dataType.String(), e)
 	}
@@ -549,18 +561,29 @@ func (c *compiler) checkExpressionValidString(dataType shared.String, expr parse
 	case parser.ExprString:
 		return nil
 	case parser.ExprBinary:
-		// For string assignments, only allow + operations (concatenation) where at least one operand is a string
-		if e.Operator != lexer.TokenType_Plus {
+		// Check if this is a relational operation (returns boolean) or string operation (returns string)
+		if c.isRelationalOperator(e.Operator) {
+			// For relational operators, check if both operands are valid for comparison
+			if err = c.checkExpressionValidForComparison(e.Left); err != nil {
+				return err
+			}
+			if err = c.checkExpressionValidForComparison(e.Right); err != nil {
+				return err
+			}
+			return nil
+		} else if e.Operator == lexer.TokenType_Plus {
+			// For string assignments, only allow + operations (concatenation) where at least one operand is a string
+			// Check if both operands are valid for strings (string, variable of string type, or another valid string binary expression)
+			if err = c.checkExpressionValidStringForBinary(e.Left); err != nil {
+				return err
+			}
+			if err = c.checkExpressionValidStringForBinary(e.Right); err != nil {
+				return err
+			}
+			return nil
+		} else {
 			return fmt.Errorf("expected %s got binary operation with operator %v", dataType.String(), e.Operator)
 		}
-		// Check if both operands are valid for strings (string, variable of string type, or another valid string binary expression)
-		if err = c.checkExpressionValidStringForBinary(e.Left); err != nil {
-			return err
-		}
-		if err = c.checkExpressionValidStringForBinary(e.Right); err != nil {
-			return err
-		}
-		return nil
 	default:
 		return fmt.Errorf("expected %s got %T", dataType.String(), e)
 	}
@@ -603,6 +626,19 @@ func (c *compiler) checkExpressionValidBoolean(dataType shared.Boolean, expr par
 	switch e := expr.(type) {
 	case parser.ExprBoolean:
 		return nil
+	case parser.ExprBinary:
+		// Boolean values can come from relational operations
+		if c.isRelationalOperator(e.Operator) {
+			// For relational operators, check if both operands are valid for comparison
+			if err = c.checkExpressionValidForComparison(e.Left); err != nil {
+				return err
+			}
+			if err = c.checkExpressionValidForComparison(e.Right); err != nil {
+				return err
+			}
+			return nil
+		}
+		return fmt.Errorf("expected %s got binary operation with operator %v", dataType.String(), e.Operator)
 	default:
 		return fmt.Errorf("expected %s got %T", dataType.String(), e)
 	}
@@ -825,6 +861,18 @@ func (c *compiler) compileExprBinary(expr parser.ExprBinary) (err error) {
 		c.sb.WriteString("*")
 	case lexer.TokenType_ForwardSlash:
 		c.sb.WriteString("/")
+	case lexer.TokenType_EqualEqual:
+		c.sb.WriteString("==")
+	case lexer.TokenType_BangEqual:
+		c.sb.WriteString("~=")
+	case lexer.TokenType_LessThan:
+		c.sb.WriteString("<")
+	case lexer.TokenType_LessThanEqual:
+		c.sb.WriteString("<=")
+	case lexer.TokenType_GreaterThan:
+		c.sb.WriteString(">")
+	case lexer.TokenType_GreaterThanEqual:
+		c.sb.WriteString(">=")
 	default:
 		err = fmt.Errorf("unknown binary operator: %v", expr.Operator)
 		return
@@ -855,5 +903,64 @@ func (c *compiler) isStringExpression(expr parser.Expr) bool {
 		return false
 	default:
 		return false
+	}
+}
+
+// Helper function to check if an operator is a relational operator
+func (c *compiler) isRelationalOperator(operator int) bool {
+	return operator == lexer.TokenType_EqualEqual ||
+		   operator == lexer.TokenType_BangEqual ||
+		   operator == lexer.TokenType_LessThan ||
+		   operator == lexer.TokenType_LessThanEqual ||
+		   operator == lexer.TokenType_GreaterThan ||
+		   operator == lexer.TokenType_GreaterThanEqual
+}
+
+// Helper function to check if an expression is valid for comparison operations
+func (c *compiler) checkExpressionValidForComparison(expr parser.Expr) (err error) {
+	switch e := expr.(type) {
+	case parser.ExprNumber, parser.ExprString, parser.ExprBoolean:
+		// Literals are always valid for comparison
+		return nil
+	case parser.ExprVariable:
+		// Check if the variable is of a comparable type
+		if varInfo, exists := c.variables[e.Name]; exists {
+			switch varInfo.dataType.(type) {
+			case shared.Number, shared.String, shared.Boolean:
+				return nil
+			default:
+				return fmt.Errorf("variable %q is of type %T which cannot be compared", e.Name, varInfo.dataType)
+			}
+		}
+		return fmt.Errorf("variable %q does not exist", e.Name)
+	case parser.ExprBinary:
+		// For binary expressions that result in comparable types
+		// Check if it's a relational operation (which returns boolean and is comparable)
+		if c.isRelationalOperator(e.Operator) {
+			// Recursively check both operands
+			if err = c.checkExpressionValidForComparison(e.Left); err != nil {
+				return err
+			}
+			if err = c.checkExpressionValidForComparison(e.Right); err != nil {
+				return err
+			}
+			return nil
+		}
+		// For arithmetic expressions (which result in numbers and are comparable)
+		switch e.Operator {
+		case lexer.TokenType_Plus, lexer.TokenType_Minus, lexer.TokenType_Asterisk, lexer.TokenType_ForwardSlash:
+			// Check if both operands are valid for arithmetic operations
+			if err = c.checkExpressionValidNumberForBinary(e.Left); err != nil {
+				return err
+			}
+			if err = c.checkExpressionValidNumberForBinary(e.Right); err != nil {
+				return err
+			}
+			return nil
+		default:
+			return fmt.Errorf("binary expression with operator %v cannot be compared", e.Operator)
+		}
+	default:
+		return fmt.Errorf("expression of type %T cannot be compared", e)
 	}
 }
