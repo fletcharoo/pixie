@@ -478,6 +478,11 @@ func (c *compiler) compileExprVariable(expr parser.ExprVariable) (err error) {
 }
 
 func (c *compiler) checkExpressionValidDataType(dataType shared.DataType, expr parser.Expr) (err error) {
+	// Handle indexing expressions specially
+	if indexExpr, isIndex := expr.(parser.ExprIndex); isIndex {
+		return c.checkExpressionValidIndex(dataType, indexExpr)
+	}
+
 	switch d := dataType.(type) {
 	case shared.Number:
 		return c.checkExpressionValidNumber(d, expr)
@@ -495,6 +500,74 @@ func (c *compiler) checkExpressionValidDataType(dataType shared.DataType, expr p
 
 	err = fmt.Errorf("unknown type: %#v", dataType)
 	return
+}
+
+// checkExpressionValidIndex validates that an indexing operation returns the expected data type
+func (c *compiler) checkExpressionValidIndex(expectedType shared.DataType, expr parser.ExprIndex) (err error) {
+	// First, we need to determine the type of the left-hand side (the thing being indexed)
+	leftVarName := ""
+	var leftDataType shared.DataType
+
+	// Get the left operand's data type
+	switch left := expr.Left.(type) {
+	case parser.ExprVariable:
+		leftVarName = left.Name
+		if varInfo, exists := c.variables[leftVarName]; exists {
+			leftDataType = varInfo.dataType
+		} else {
+			return fmt.Errorf("variable %q does not exist", leftVarName)
+		}
+	case parser.ExprString:
+		leftDataType = shared.String{}
+	// For other expressions, we rely on the type checking system to determine compatibility
+	default:
+		// For now, we'll limit indexing support to variables and string literals
+		// In a full implementation, we would need expression type inference
+		return fmt.Errorf("indexing is not supported on this expression type: %T", left)
+	}
+
+	// Validate the index expression (should be a number)
+	if err = c.checkExpressionValidForComparison(expr.Index); err != nil {
+		// Try to check if it's a valid number specifically
+		switch idx := expr.Index.(type) {
+		case parser.ExprNumber:
+			// Valid number literal
+		case parser.ExprVariable:
+			if varInfo, exists := c.variables[idx.Name]; exists {
+				if _, isNum := varInfo.dataType.(shared.Number); !isNum {
+					return fmt.Errorf("index must be a number, got %s", varInfo.dataType.String())
+				}
+			} else {
+				return fmt.Errorf("index variable %q does not exist", idx.Name)
+			}
+		case parser.ExprBinary:
+			// Binary expressions might result in numbers, check recursively
+			if err = c.checkExpressionValidNumberForBinary(idx); err != nil {
+				return fmt.Errorf("index expression must result in a number: %v", err)
+			}
+		default:
+			return fmt.Errorf("index expression must result in a number, got %T", expr.Index)
+		}
+	}
+
+	// Now check if the left type supports indexing and if the result matches the expected type
+	switch leftType := leftDataType.(type) {
+	case shared.List:
+		// Indexing a list should return an element of the list's element type
+		if expectedType.String() != leftType.ListType.String() {
+			return fmt.Errorf("indexing list of %s returns %s, but expected %s",
+				leftType.ListType.String(), leftType.ListType.String(), expectedType.String())
+		}
+		return nil
+	case shared.String:
+		// Indexing a string should return a string (a character)
+		if _, isString := expectedType.(shared.String); !isString {
+			return fmt.Errorf("indexing string returns string, but expected %s", expectedType.String())
+		}
+		return nil
+	default:
+		return fmt.Errorf("indexing is not supported on type %s", leftType.String())
+	}
 }
 
 func (c *compiler) checkExpressionValidNumber(dataType shared.Number, expr parser.Expr) (err error) {
@@ -769,32 +842,29 @@ func (c *compiler) compileObjectZeroValue(dataType shared.Custom) (err error) {
 }
 
 func (c *compiler) compileExprIndex(expr parser.ExprIndex) (err error) {
-	// Compile the left side (the container being indexed)
-	if err = c.compileExpr(expr.Left); err != nil {
-		err = fmt.Errorf("failed to compile left side of index: %w", err)
-		return
-	}
+	// Determine if we're indexing a string variable to use string.sub function
+	isStringIndexing := false
 
-	// Check if the left expression is a variable to determine its type for index adjustment
-	// For lists, we need to add 1 to the index since pixie is 0-indexed but Lua is 1-indexed
-	needsIndexAdjustment := false
-
-	// Determine if the container is a list by checking the variable type
+	// Check if the left side is a variable of string type
 	if varExpr, isVar := expr.Left.(parser.ExprVariable); isVar {
 		if variable, exists := c.variables[varExpr.Name]; exists {
-			// Check if the variable is of list type
-			if _, isList := variable.dataType.(shared.List); isList {
-				needsIndexAdjustment = true
+			if _, isString := variable.dataType.(shared.String); isString {
+				isStringIndexing = true
 			}
 		}
 	}
 
-	c.sb.WriteRune('[')
+	if isStringIndexing {
+		// For string indexing, use string.sub function in Lua
+		c.sb.WriteString("sub(")
+		if err = c.compileExpr(expr.Left); err != nil {
+			err = fmt.Errorf("failed to compile left side of index: %w", err)
+			return
+		}
+		c.sb.WriteString(", ")
 
-	// If we need index adjustment and the index is a number literal, add 1 to it
-	if needsIndexAdjustment {
+		// For strings, we add 1 to convert from pixie's 0-indexing to lua's 1-indexing
 		if _, isNum := expr.Index.(parser.ExprNumber); isNum {
-			// For numeric indices, we add 1 to convert from pixie's 0-indexing to lua's 1-indexing
 			c.sb.WriteString("(")
 			if err = c.compileExpr(expr.Index); err != nil {
 				err = fmt.Errorf("failed to compile index: %w", err)
@@ -802,7 +872,6 @@ func (c *compiler) compileExprIndex(expr parser.ExprIndex) (err error) {
 			}
 			c.sb.WriteString(" + 1)")
 		} else {
-			// For non-numeric indices (like variables or expressions), wrap in parentheses and add 1
 			c.sb.WriteString("(")
 			if err = c.compileExpr(expr.Index); err != nil {
 				err = fmt.Errorf("failed to compile index: %w", err)
@@ -810,15 +879,76 @@ func (c *compiler) compileExprIndex(expr parser.ExprIndex) (err error) {
 			}
 			c.sb.WriteString(" + 1)")
 		}
+
+		// Same index for start and end to get a single character
+		c.sb.WriteString(", ")
+		if _, isNum := expr.Index.(parser.ExprNumber); isNum {
+			c.sb.WriteString("(")
+			if err = c.compileExpr(expr.Index); err != nil {
+				err = fmt.Errorf("failed to compile index: %w", err)
+				return
+			}
+			c.sb.WriteString(" + 1)")
+		} else {
+			c.sb.WriteString("(")
+			if err = c.compileExpr(expr.Index); err != nil {
+				err = fmt.Errorf("failed to compile index: %w", err)
+				return
+			}
+			c.sb.WriteString(" + 1)")
+		}
+		c.sb.WriteString(")")
 	} else {
-		// For maps and other types, compile the index as-is
-		if err = c.compileExpr(expr.Index); err != nil {
-			err = fmt.Errorf("failed to compile index: %w", err)
+		// For lists and maps, use standard indexing with bracket notation
+		// Check if the container is a list to determine if index adjustment is needed
+		needsIndexAdjustment := false
+
+		if varExpr, isVar := expr.Left.(parser.ExprVariable); isVar {
+			if variable, exists := c.variables[varExpr.Name]; exists {
+				// Check if the variable is of list type
+				if _, isList := variable.dataType.(shared.List); isList {
+					needsIndexAdjustment = true
+				}
+			}
+		}
+
+		if err = c.compileExpr(expr.Left); err != nil {
+			err = fmt.Errorf("failed to compile left side of index: %w", err)
 			return
 		}
+
+		c.sb.WriteRune('[')
+
+		if needsIndexAdjustment {
+			// If we need index adjustment and the index is a number literal, add 1 to it
+			if _, isNum := expr.Index.(parser.ExprNumber); isNum {
+				// For numeric indices, we add 1 to convert from pixie's 0-indexing to lua's 1-indexing
+				c.sb.WriteString("(")
+				if err = c.compileExpr(expr.Index); err != nil {
+					err = fmt.Errorf("failed to compile index: %w", err)
+					return
+				}
+				c.sb.WriteString(" + 1)")
+			} else {
+				// For non-numeric indices (like variables or expressions), wrap in parentheses and add 1
+				c.sb.WriteString("(")
+				if err = c.compileExpr(expr.Index); err != nil {
+					err = fmt.Errorf("failed to compile index: %w", err)
+					return
+				}
+				c.sb.WriteString(" + 1)")
+			}
+		} else {
+			// For maps and other types, compile the index as-is
+			if err = c.compileExpr(expr.Index); err != nil {
+				err = fmt.Errorf("failed to compile index: %w", err)
+				return
+			}
+		}
+
+		c.sb.WriteRune(']')
 	}
 
-	c.sb.WriteRune(']')
 	return nil
 }
 
@@ -903,6 +1033,36 @@ func (c *compiler) isStringExpression(expr parser.Expr) bool {
 		return false
 	default:
 		return false
+	}
+}
+
+// getExpressionType returns the data type of an expression
+func (c *compiler) getExpressionType(expr parser.Expr) shared.DataType {
+	switch e := expr.(type) {
+	case parser.ExprVariable:
+		if varInfo, exists := c.variables[e.Name]; exists {
+			return varInfo.dataType
+		}
+		// Return undefined if variable doesn't exist - this should ideally be caught during type checking
+		return shared.String{} // Default fallback
+	case parser.ExprString:
+		return shared.String{}
+	case parser.ExprNumber:
+		return shared.Number{}
+	case parser.ExprBoolean:
+		return shared.Boolean{}
+	case parser.ExprList:
+		// For a list literal, return the type based on the first element if available, or a generic list
+		if len(e.Values) > 0 {
+			// This is more complex since we'd need to determine the type from the elements
+			// For now, we'll return a generic list, but in a real implementation we might need
+			// to infer the type from the first element
+		}
+		return shared.List{}
+	default:
+		// For other expressions like binary operations, we'd need more complex type inference
+		// For now, return a default
+		return shared.String{} // Default fallback
 	}
 }
 

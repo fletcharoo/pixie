@@ -45,14 +45,3 @@ m2 map[num:bool] = {1: true, 2: false}
 
 // assign variable to another variable
 s3 str = s1
-
-person obj {
-    name str
-}
-
-m3 map[str:person] = {
-    "person1": {
-        name: "Andrew"
-    }
-}
-print(m3)

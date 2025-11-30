@@ -27,9 +27,6 @@ m1 = {"hello":1}
 m2 = {1:true,2:false}
 s3 = s1
 
-m3 = {"person1":{"name":"Andrew"}}
-print(m3)
-
 ---
 
 [Test_CompileExamples/custom_objects.pixie - 1]
@@ -54,6 +51,12 @@ p = {"name":"Andrew"}
 print(p.name)
 lmp = [{"person1":{"name":"Andrew"}}]
 print(lmp[(0 + 1)]["person1"].name)
+s = "Hello world"
+print(sub(s, (0 + 1), (0 + 1)))
+print(sub(s, (1 + 1), (1 + 1)))
+print(sub(s, (6 + 1), (6 + 1)))
+i = 3
+print(sub(s, (i + 1), (i + 1)))
 
 ---
 
@@ -126,5 +129,25 @@ print(boolResult)
 z = 3
 comboResult = z < x
 print(comboResult)
+
+---
+
+[Test_CompileExamples/string_indexing.pixie - 1]
+s = "Hello world"
+print(sub(s, (0 + 1), (0 + 1)))
+print(sub(s, (1 + 1), (1 + 1)))
+print(sub(s, (6 + 1), (6 + 1)))
+i = 3
+print(sub(s, (i + 1), (i + 1)))
+
+---
+
+[Test_CompileExamples/string_indexing_assignment.pixie - 1]
+s = "Hello world"
+first_char = sub(s, (0 + 1), (0 + 1))
+print(first_char)
+i = 4
+char_at_i = sub(s, (i + 1), (i + 1))
+print(char_at_i)
 
 ---

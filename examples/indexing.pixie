@@ -24,3 +24,13 @@ print(p.name)
 // multiple indexes
 lmp list[map[str:person]] = [{"person1": {name: "Andrew"}}]
 print(lmp[0]["person1"].name)
+
+// test string indexing in pixie
+s str = "Hello world"
+print(s[0])  // Should print 'H' (first character)
+print(s[1])  // Should print 'e' (second character)
+print(s[6])  // Should print 'w' (seventh character)
+
+// test with a variable index
+i num = 3
+print(s[i])  // Should print 'l' (fourth character)
